@@ -30,6 +30,7 @@
   --pet-dog:#FFD3DA; --pet-cat:#C5E5F8; --pet-rabbit:#C8F0DC;
   --pet-hamster:#FFEAB3; --pet-parrot:#DAD0F0;
   --pet-turtle:#FFCDB8; --pet-goldfish:#BFE5E0;
+  --pet-clock:#FFE680;
   --bg:linear-gradient(145deg,#FFF0F7 0%,#F0EFFF 50%,#EDFFF7 100%);
   --r:18px; --r-sm:12px; --shadow:0 6px 24px rgba(255,123,172,.18);
 }
@@ -152,6 +153,50 @@ body{font-family:'Fredoka',system-ui,sans-serif;background:#FFF0F7;background:va
   background-size:200% 200%!important;animation:rainbowSlide 2s infinite linear;
   box-shadow:0 0 18px rgba(195,177,225,.7)}
 @keyframes rainbowSlide{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+.cell-striped-h{
+  background:repeating-linear-gradient(0deg,
+    #52D9A0 0px,#52D9A0 5px,#FFFFFF 5px,#FFFFFF 9px)!important;
+  box-shadow:0 0 12px rgba(82,217,160,.6);
+  animation:stripedGlow 1.4s infinite alternate}
+.cell-striped-v{
+  background:repeating-linear-gradient(90deg,
+    #7BC8F6 0px,#7BC8F6 5px,#FFFFFF 5px,#FFFFFF 9px)!important;
+  box-shadow:0 0 12px rgba(123,200,246,.6);
+  animation:stripedGlow 1.4s infinite alternate}
+@keyframes stripedGlow{to{box-shadow:0 0 22px rgba(82,217,160,.9)}}
+.cell-clock{
+  background:radial-gradient(circle,#FFF8C0,#FFE680)!important;
+  box-shadow:0 0 14px rgba(255,215,0,.7);
+  animation:clockTick 1s infinite}
+@keyframes clockTick{
+  0%,100%{box-shadow:0 0 14px rgba(255,215,0,.7);transform:scale(1)}
+  50%{box-shadow:0 0 20px rgba(255,215,0,1);transform:scale(1.04)}}
+.row-flash{position:absolute;left:0;width:100%;height:0;
+  background:linear-gradient(90deg,transparent 0%,rgba(82,217,160,.85) 30%,rgba(82,217,160,.85) 70%,transparent 100%);
+  pointer-events:none;z-index:22;animation:rowFlashAnim .45s ease-out forwards}
+@keyframes rowFlashAnim{
+  0%{height:0;opacity:0}
+  20%{height:var(--cell);opacity:1}
+  100%{height:var(--cell);opacity:0}}
+.col-flash{position:absolute;top:0;height:100%;width:0;
+  background:linear-gradient(0deg,transparent 0%,rgba(123,200,246,.85) 30%,rgba(123,200,246,.85) 70%,transparent 100%);
+  pointer-events:none;z-index:22;animation:colFlashAnim .45s ease-out forwards}
+@keyframes colFlashAnim{
+  0%{width:0;opacity:0}
+  20%{width:var(--cell);opacity:1}
+  100%{width:var(--cell);opacity:0}}
+.time-popup{position:absolute;pointer-events:none;font-weight:700;
+  color:#52D9A0;font-size:26px;
+  text-shadow:2px 2px 0 var(--white),-2px -2px 0 var(--white),
+    2px -2px 0 var(--white),-2px 2px 0 var(--white);
+  animation:timeFloat 1.2s ease-out forwards;z-index:26}
+@keyframes timeFloat{
+  0%{transform:translateY(0) scale(.5);opacity:0}
+  20%{transform:translateY(-8px) scale(1.3);opacity:1}
+  100%{transform:translateY(-60px) scale(.9);opacity:0}}
+#time-bar-fill.bonus-flash{animation:barBonus .6s ease}
+@keyframes barBonus{
+  50%{filter:brightness(1.6) saturate(1.5);transform:scaleY(1.5)}}
 .particle{position:absolute;pointer-events:none;width:14px;height:14px;
   font-size:14px;line-height:14px;text-align:center;
   animation:particleFly .7s ease-out forwards;z-index:20}
@@ -526,7 +571,8 @@ const PETPOP_DEX = {
 };
 const ALL_PETS = [...PETPOP_DEX.base, ...PETPOP_DEX.score_tier, ...PETPOP_DEX.mission];
 const BOARD_PETS = PETPOP_DEX.base;
-const PET_BY_ID = Object.fromEntries(ALL_PETS.map(p => [p.id, p]));
+const CLOCK_PET = { id:'clock', name_en:'Clock', cp:'23f0' };
+const PET_BY_ID = Object.fromEntries([...ALL_PETS, CLOCK_PET].map(p => [p.id, p]));
 
 const BAD_WORDS = ['fuck','shit','ass','bitch','cunt','damn','dick','cock','pussy','nigger','nigga','faggot','fag','retard','whore','slut'];
 const normLeet = s => s.toLowerCase().replace(/0/g,'o').replace(/1/g,'i').replace(/3/g,'e')
@@ -543,7 +589,7 @@ const show = id => {
   document.getElementById(id).classList.add('active');
 };
 function preload(){
-  return Promise.all(ALL_PETS.map(p => new Promise(res => {
+  return Promise.all([...ALL_PETS, CLOCK_PET].map(p => new Promise(res => {
     const img = new Image();
     img.onload = img.onerror = res;
     img.src = TW(p.cp);
@@ -868,35 +914,43 @@ const G = {
 const boardEl = document.getElementById('board');
 const rndPet = () => BOARD_PETS[Math.floor(Math.random()*BOARD_PETS.length)];
 
-// 콤보 빈도 증가용 스마트 스폰: 25% 확률로 5방향 검사
+// 콤보 빈도 증가용 스마트 스폰: 25% 확률로 5방향 검사 + 시계 펫 스폰
 function smartSpawn(r, c){
+  // 시계 펫: 게임 시작 후 20초 이후, 남은 시간 5초 이상일 때
+  if(G.timeLeft <= 40 && G.timeLeft > 5){
+    const adjClock =
+      G.board[r+1]?.[c]?.id === 'clock' ||
+      G.board[r]?.[c-1]?.id === 'clock' ||
+      G.board[r]?.[c+1]?.id === 'clock';
+    const clockChance = adjClock ? 0.30 : 0.04;
+    if(Math.random() < clockChance) return CLOCK_PET;
+  }
+
   if(Math.random() < 0.25){
     const candidates = [];
-    // 2-in-a-row 아래 (수직 매치)
     if(r+2 < SIZE && G.board[r+1]?.[c]?.id
-       && G.board[r+1][c].id === G.board[r+2]?.[c]?.id){
+       && G.board[r+1][c].id === G.board[r+2]?.[c]?.id
+       && G.board[r+1][c].id !== 'clock'){
       candidates.push(G.board[r+1][c].id);
     }
-    // 2-in-a-row 왼쪽 (수평 매치)
     if(c >= 2 && G.board[r]?.[c-1]?.id
-       && G.board[r][c-1].id === G.board[r]?.[c-2]?.id){
+       && G.board[r][c-1].id === G.board[r]?.[c-2]?.id
+       && G.board[r][c-1].id !== 'clock'){
       candidates.push(G.board[r][c-1].id);
     }
-    // 2-in-a-row 오른쪽 (수평 매치)
     if(c+2 < SIZE && G.board[r]?.[c+1]?.id
-       && G.board[r][c+1].id === G.board[r]?.[c+2]?.id){
+       && G.board[r][c+1].id === G.board[r]?.[c+2]?.id
+       && G.board[r][c+1].id !== 'clock'){
       candidates.push(G.board[r][c+1].id);
     }
-    // 샌드위치 수평: 양옆 같은 펫
     if(c >= 1 && c+1 < SIZE
        && G.board[r]?.[c-1]?.id === G.board[r]?.[c+1]?.id
-       && G.board[r]?.[c-1]?.id){
+       && G.board[r]?.[c-1]?.id && G.board[r][c-1].id !== 'clock'){
       candidates.push(G.board[r][c-1].id);
     }
-    // 샌드위치 수직: 위아래 같은 펫
     if(r >= 1 && r+1 < SIZE
        && G.board[r-1]?.[c]?.id === G.board[r+1]?.[c]?.id
-       && G.board[r-1]?.[c]?.id){
+       && G.board[r-1]?.[c]?.id && G.board[r-1][c].id !== 'clock'){
       candidates.push(G.board[r-1][c].id);
     }
     if(candidates.length > 0){
@@ -970,13 +1024,16 @@ function makeCell(r, c, pet){
   img.src = TW(pet.cp); img.alt = pet.name_en;
   el.appendChild(img);
   if(pet.special) applySpecialClass(el, pet.special);
+  if(pet.id === 'clock') el.classList.add('cell-clock');
   setTimeout(()=>el.classList.remove('entering'), 500);
   return el;
 }
 function applySpecialClass(el, special){
-  el.classList.remove('cell-special','cell-rainbow');
+  el.classList.remove('cell-special','cell-rainbow','cell-striped-h','cell-striped-v');
   if(special === 'bomb') el.classList.add('cell-special');
   if(special === 'rainbow') el.classList.add('cell-rainbow');
+  if(special === 'striped-h') el.classList.add('cell-striped-h');
+  if(special === 'striped-v') el.classList.add('cell-striped-v');
 }
 function updatePos(el, r, c){
   if(!el) return;
@@ -1057,6 +1114,17 @@ async function trySwap(r1, c1, r2, c2){
   await sleep(280);
 
   const a = G.board[r1][c1], b = G.board[r2][c2];
+
+  // 특수 + 특수 콤보 처리
+  if(a?.special && b?.special){
+    await triggerSpecialCombo(r1, c1, r2, c2, a, b);
+    G.combo = 0;
+    document.getElementById('combo-disp').textContent = 0;
+    G.busy = false;
+    scheduleHint();
+    return;
+  }
+
   if(a?.special === 'rainbow' || b?.special === 'rainbow'){
     const isAR = a?.special === 'rainbow';
     const targetId = isAR ? b.id : a.id;
@@ -1157,17 +1225,29 @@ async function cascade(){
         promotions.push({r, c, petId:line.petId, type:'rainbow'});
       } else if(line.len === 4){
         const [r,c] = line.cells[Math.floor(line.cells.length/2)];
-        if(!promotions.find(p=>p.r===r&&p.c===c))
-          promotions.push({r, c, petId:line.petId, type:'bomb'});
+        if(!promotions.find(p=>p.r===r&&p.c===c)){
+          // 가로 4매치 → striped-h (가로 줄 클리어), 세로 4매치 → striped-v (세로 줄 클리어)
+          const stripeType = line.type === 'h' ? 'striped-h' : 'striped-v';
+          promotions.push({r, c, petId:line.petId, type:stripeType});
+        }
       }
     }
 
+    // 트리거 처리: 폭탄, 줄무늬, 무지개, 시계
     const bombsToTrigger = [];
+    const stripedHs = [];
+    const stripedVs = [];
     const rainbowsToTrigger = [];
+    let clocksMatched = 0;
     for(const k of toClear){
       const [r,c] = k.split(',').map(Number);
-      if(G.board[r][c]?.special === 'bomb') bombsToTrigger.push([r,c]);
-      if(G.board[r][c]?.special === 'rainbow') rainbowsToTrigger.push([r,c]);
+      const cell = G.board[r][c];
+      if(!cell) continue;
+      if(cell.special === 'bomb') bombsToTrigger.push([r,c]);
+      if(cell.special === 'striped-h') stripedHs.push([r,c]);
+      if(cell.special === 'striped-v') stripedVs.push([r,c]);
+      if(cell.special === 'rainbow') rainbowsToTrigger.push([r,c]);
+      if(cell.id === 'clock') clocksMatched++;
     }
     for(const [br,bc] of bombsToTrigger){
       for(let dr=-1;dr<=1;dr++)
@@ -1177,7 +1257,14 @@ async function cascade(){
         }
       spawnBombParticles(br, bc);
     }
-    // 무지개가 매치에 잡혔을 때: 해당 색 전체 제거 + 무지개 파티클
+    for(const [sr,sc] of stripedHs){
+      for(let i=0;i<SIZE;i++) if(G.board[sr][i]) toClear.add(`${sr},${i}`);
+      spawnRowFlash(sr);
+    }
+    for(const [sr,sc] of stripedVs){
+      for(let i=0;i<SIZE;i++) if(G.board[i][sc]) toClear.add(`${i},${sc}`);
+      spawnColFlash(sc);
+    }
     for(const [rr,rc] of rainbowsToTrigger){
       const targetId = G.board[rr][rc].id;
       for(let r2=0;r2<SIZE;r2++)
@@ -1189,6 +1276,9 @@ async function cascade(){
     }
 
     await clearCells(toClear);
+
+    // 시계 펫이 매치되었으면 시간 보너스
+    if(clocksMatched > 0) addTimeBonus(clocksMatched * 3);
 
     for(const p of promotions){
       const newPet = {...PET_BY_ID[p.petId], special:p.type};
@@ -1205,12 +1295,180 @@ async function cascade(){
   if(G.feverActive){ G.feverActive = false; }
 }
 
+function spawnRowFlash(r){
+  const flash = document.createElement('div');
+  flash.className = 'row-flash';
+  flash.style.setProperty('--cell', CELL+'px');
+  flash.style.top = (r*(CELL+GAP)) + 'px';
+  boardEl.appendChild(flash);
+  setTimeout(() => flash.remove(), 500);
+}
+function spawnColFlash(c){
+  const flash = document.createElement('div');
+  flash.className = 'col-flash';
+  flash.style.setProperty('--cell', CELL+'px');
+  flash.style.left = (c*(CELL+GAP)) + 'px';
+  boardEl.appendChild(flash);
+  setTimeout(() => flash.remove(), 500);
+}
+
+function addTimeBonus(seconds){
+  G.timeLeft += seconds;
+  document.getElementById('timer-text').textContent = G.timeLeft;
+  const bar = document.getElementById('time-bar-fill');
+  bar.style.transform = `scaleX(${Math.min(1, G.timeLeft/60)})`;
+  bar.classList.remove('bonus-flash'); void bar.offsetWidth; bar.classList.add('bonus-flash');
+  document.getElementById('timer-wrap').classList.remove('urgent');
+  bar.classList.remove('warning','urgent');
+  if(G.timeLeft <= 20 && G.timeLeft > 8) bar.classList.add('warning');
+  if(G.timeLeft <= 8){ bar.classList.remove('warning'); bar.classList.add('urgent'); }
+
+  // "+3s" 팝업
+  const popup = document.createElement('div');
+  popup.className = 'time-popup';
+  popup.textContent = `+${seconds}s`;
+  popup.style.left = '50%';
+  popup.style.top = '50%';
+  popup.style.transform = 'translate(-50%,-50%)';
+  boardEl.appendChild(popup);
+  setTimeout(()=>popup.remove(), 1200);
+
+  // 시간 보너스 사운드
+  if(soundOn && toneReady){
+    ['G4','C5','E5','G5'].forEach((n,i) =>
+      synthFX.triggerAttackRelease(n,'16n', Tone.now() + i*.05));
+  }
+}
+
 function shakeBoard(){
   const stage = document.getElementById('board-stage');
   stage.classList.remove('shake-board');
   void stage.offsetWidth;
   stage.classList.add('shake-board');
   setTimeout(() => stage.classList.remove('shake-board'), 450);
+}
+
+async function triggerSpecialCombo(r1, c1, r2, c2, a, b){
+  G.combo++;
+  G.maxCombo = Math.max(G.maxCombo, G.combo);
+  shakeBoard();
+  if(!G.feverActive) triggerFever();
+
+  const toClear = new Set([`${r1},${c1}`, `${r2},${c2}`]);
+  const types = [a.special, b.special];
+  const isStriped = t => t === 'striped-h' || t === 'striped-v';
+  const both = (x, y) => (types[0] === x && types[1] === y) || (types[0] === y && types[1] === x);
+  const has = x => types.includes(x);
+
+  let bonusPoints = 2000;
+
+  // bomb + bomb → 5x5 폭발
+  if(both('bomb','bomb')){
+    for(let dr=-2;dr<=2;dr++)
+      for(let dc=-2;dc<=2;dc++){
+        const nr = r2+dr, nc = c2+dc;
+        if(nr>=0 && nr<SIZE && nc>=0 && nc<SIZE && G.board[nr][nc]) toClear.add(`${nr},${nc}`);
+      }
+    spawnBombParticles(r2, c2);
+    spawnBombParticles(r1, c1);
+    SFX.fever();
+    bonusPoints = 3000;
+  }
+  // rainbow + rainbow → 보드 전체 클리어
+  else if(both('rainbow','rainbow')){
+    for(let r=0;r<SIZE;r++)
+      for(let c=0;c<SIZE;c++)
+        if(G.board[r][c]) toClear.add(`${r},${c}`);
+    spawnRainbowParticles(r1, c1);
+    spawnRainbowParticles(r2, c2);
+    SFX.fever();
+    bonusPoints = 10000;
+  }
+  // bomb + rainbow → 한 색 전체 폭탄화
+  else if(both('bomb','rainbow')){
+    const targetId = a.special === 'rainbow' ? b.id : a.id;
+    const bombSites = [];
+    for(let r=0;r<SIZE;r++)
+      for(let c=0;c<SIZE;c++)
+        if(G.board[r][c]?.id === targetId){
+          bombSites.push([r,c]);
+          toClear.add(`${r},${c}`);
+        }
+    for(const [br,bc] of bombSites){
+      for(let dr=-1;dr<=1;dr++)
+        for(let dc=-1;dc<=1;dc++){
+          const nr=br+dr, nc=bc+dc;
+          if(nr>=0&&nr<SIZE&&nc>=0&&nc<SIZE && G.board[nr][nc]) toClear.add(`${nr},${nc}`);
+        }
+      spawnBombParticles(br, bc);
+    }
+    spawnRainbowParticles(r1, c1);
+    SFX.fever();
+    bonusPoints = 5000;
+  }
+  // striped + striped → 가로 + 세로 십자 클리어
+  else if(isStriped(types[0]) && isStriped(types[1])){
+    for(let i=0;i<SIZE;i++){
+      if(G.board[r2][i]) toClear.add(`${r2},${i}`);
+      if(G.board[i][c2]) toClear.add(`${i},${c2}`);
+    }
+    spawnRowFlash(r2);
+    spawnColFlash(c2);
+    SFX.combo();
+    bonusPoints = 2000;
+  }
+  // bomb + striped → 3행 + 3열 클리어 (대형 십자)
+  else if(has('bomb') && (isStriped(types[0]) || isStriped(types[1]))){
+    for(let i=0;i<SIZE;i++){
+      for(let dr=-1;dr<=1;dr++){
+        if(r2+dr>=0 && r2+dr<SIZE && G.board[r2+dr][i]) toClear.add(`${r2+dr},${i}`);
+      }
+      for(let dc=-1;dc<=1;dc++){
+        if(c2+dc>=0 && c2+dc<SIZE && G.board[i][c2+dc]) toClear.add(`${i},${c2+dc}`);
+      }
+    }
+    for(let dr=-1;dr<=1;dr++) if(r2+dr>=0 && r2+dr<SIZE) spawnRowFlash(r2+dr);
+    for(let dc=-1;dc<=1;dc++) if(c2+dc>=0 && c2+dc<SIZE) spawnColFlash(c2+dc);
+    SFX.fever();
+    bonusPoints = 4000;
+  }
+  // rainbow + striped → 한 색 전부 줄무늬화 → 줄 클리어 다발
+  else if(has('rainbow') && (isStriped(types[0]) || isStriped(types[1]))){
+    const targetId = a.special === 'rainbow' ? b.id : a.id;
+    const stripeRows = new Set();
+    const stripeCols = new Set();
+    for(let r=0;r<SIZE;r++)
+      for(let c=0;c<SIZE;c++)
+        if(G.board[r][c]?.id === targetId){
+          toClear.add(`${r},${c}`);
+          if(Math.random() < 0.5) stripeRows.add(r);
+          else stripeCols.add(c);
+        }
+    for(const sr of stripeRows){
+      for(let i=0;i<SIZE;i++) if(G.board[sr][i]) toClear.add(`${sr},${i}`);
+      spawnRowFlash(sr);
+    }
+    for(const sc of stripeCols){
+      for(let i=0;i<SIZE;i++) if(G.board[i][sc]) toClear.add(`${i},${sc}`);
+      spawnColFlash(sc);
+    }
+    spawnRainbowParticles(r1, c1);
+    SFX.fever();
+    bonusPoints = 6000;
+  }
+
+  // 시계 카운트
+  let clocksMatched = 0;
+  for(const k of toClear){
+    const [r,c] = k.split(',').map(Number);
+    if(G.board[r][c]?.id === 'clock') clocksMatched++;
+  }
+
+  awardScoreFlat(toClear.size, 0, bonusPoints);
+  await clearCells(toClear);
+  if(clocksMatched > 0) addTimeBonus(clocksMatched * 3);
+  await applyGravity();
+  await cascade();
 }
 
 function spawnMatchRings(lines){
