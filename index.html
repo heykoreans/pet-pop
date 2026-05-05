@@ -1,0 +1,1528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>PET POP 🐾</title>
+<meta property="og:title"       content="PET POP 🐾">
+<meta property="og:description" content="60 seconds. Match cute pets. Beat the high score.">
+<meta property="og:image"       content="https://petpop.mybumo.com/og.png">
+<meta property="og:url"         content="https://petpop.mybumo.com">
+<meta name="twitter:card"       content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --pink:#FF7BAC; --pink-lt:#FFD6E8; --pink-bg:#FFF0F7;
+  --mint:#52D9A0; --sky:#7BC8F6; --yellow:#FFD700;
+  --lavender:#C3B1E1; --purple:#2D1B4E; --muted:#8B7BA8; --white:#FFFFFF;
+  --pet-dog:#FFD3DA; --pet-cat:#C5E5F8; --pet-rabbit:#C8F0DC;
+  --pet-hamster:#FFEAB3; --pet-parrot:#DAD0F0;
+  --pet-turtle:#FFCDB8; --pet-goldfish:#BFE5E0;
+  --bg:linear-gradient(145deg,#FFF0F7 0%,#F0EFFF 50%,#EDFFF7 100%);
+  --r:18px; --r-sm:12px; --shadow:0 6px 24px rgba(255,123,172,.18);
+}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Fredoka',system-ui,sans-serif;background:#FFF0F7;background:var(--bg);
+  color:var(--purple);display:flex;align-items:center;justify-content:center}
+#app{width:100%;max-width:460px;height:100svh;max-height:820px;
+  display:flex;flex-direction:column;position:relative;overflow:hidden;background:var(--white)}
+@media(min-width:600px){
+  #app{border-radius:28px;height:780px;margin:20px auto;box-shadow:0 0 60px rgba(45,27,78,.10)}
+  body{overflow:auto;align-items:flex-start;padding:20px 0 40px}
+}
+.screen{display:none;flex-direction:column;flex:1;overflow:hidden}
+.screen.active{display:flex}
+#loading-screen{align-items:center;justify-content:center;gap:16px;
+  background:linear-gradient(160deg,#FFF0F7,#F0EFFF,#EDFFF7)}
+.loading-emoji{font-size:56px;animation:spin-bounce .8s infinite alternate ease-in-out}
+@keyframes spin-bounce{from{transform:translateY(0) rotate(-8deg);opacity:.8}
+  to{transform:translateY(-16px) rotate(8deg);opacity:1}}
+.loading-label{font-size:16px;color:var(--muted);font-weight:600}
+#home-screen{align-items:center;justify-content:flex-start;padding:36px 24px 28px;gap:18px;
+  background:linear-gradient(160deg,#FFF0F7 0%,#F0EFFF 55%,#EDFFF7 100%);overflow-y:auto}
+.home-hero{text-align:center}
+.home-paws{font-size:48px;display:block;margin-bottom:8px;animation:wiggle 2s infinite ease-in-out}
+@keyframes wiggle{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
+.home-title{font-size:52px;font-weight:700;letter-spacing:-.5px;
+  background:linear-gradient(135deg,var(--pink),var(--lavender));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1.05}
+.home-tagline{font-size:15px;color:var(--muted);margin-top:6px}
+.player-card{width:100%;background:var(--white);border:2px solid var(--pink-lt);
+  border-radius:var(--r);padding:14px 18px;display:flex;align-items:center;gap:14px}
+.player-avatar{width:48px;height:48px;font-size:28px;display:flex;align-items:center;
+  justify-content:center;background:var(--pink-bg);border-radius:50%;flex-shrink:0}
+.player-callsign{font-size:20px;font-weight:700}
+.player-sub{font-size:13px;color:var(--muted);margin-top:2px}
+.btn{width:100%;padding:14px;border:none;border-radius:var(--r);font-family:inherit;
+  font-size:17px;font-weight:700;cursor:pointer;transition:transform .12s;
+  display:flex;align-items:center;justify-content:center;gap:8px}
+.btn:active{transform:scale(.96)}
+.btn-pink{background:var(--pink);color:var(--white);box-shadow:0 4px 16px rgba(255,123,172,.4)}
+.btn-sky{background:var(--sky);color:var(--white);box-shadow:0 4px 16px rgba(123,200,246,.4)}
+.btn-ghost{background:transparent;color:var(--muted);border:2px solid var(--pink-lt)}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+#game-screen{background:linear-gradient(160deg,#FFF8FB 0%,#F5EBFF 50%,#E5F8FF 100%)}
+#sound-toggle{position:absolute;top:14px;right:16px;z-index:5;width:34px;height:34px;
+  border-radius:50%;background:var(--white);border:2px solid var(--pink-lt);font-size:14px;cursor:pointer}
+#time-bar-track{height:8px;background:rgba(195,177,225,.2);
+  margin:10px 14px 0;border-radius:4px;overflow:hidden;flex-shrink:0;
+  box-shadow:inset 0 1px 3px rgba(0,0,0,.06)}
+#time-bar-fill{height:100%;width:100%;border-radius:4px;
+  background:linear-gradient(90deg,#52D9A0 0%,#FFD700 55%,#FF7BAC 100%);
+  transform-origin:left center;transition:transform 1s linear, background .4s}
+#time-bar-fill.warning{background:linear-gradient(90deg,#FFD700,#FF7BAC,#E53E3E)}
+#time-bar-fill.urgent{background:linear-gradient(90deg,#FF7BAC,#E53E3E);
+  animation:timeBarPulse .55s infinite}
+@keyframes timeBarPulse{50%{opacity:.5}}
+#game-header{padding:10px 16px 6px;flex-shrink:0;
+  display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center}
+.stat-card{background:var(--white);border:2px solid var(--pink-lt);border-radius:14px;
+  padding:6px 12px;text-align:center;box-shadow:0 2px 0 var(--pink-lt)}
+.stat-label{font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+.stat-value{font-size:22px;font-weight:700;line-height:1.1;color:var(--purple);transition:transform .15s}
+.stat-value.flash{animation:popFlash .3s ease}
+@keyframes popFlash{0%{transform:scale(1)}40%{transform:scale(1.3);color:var(--pink)}100%{transform:scale(1)}}
+#timer-wrap{position:relative;width:64px;height:64px}
+#timer-svg{transform:rotate(-90deg)}
+#timer-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:18px;font-weight:700;color:var(--purple)}
+#timer-wrap.urgent #timer-text{color:#E53E3E;animation:pulse .6s infinite}
+@keyframes pulse{50%{transform:scale(1.1)}}
+#board-frame{flex:1;display:flex;align-items:center;justify-content:center;
+  padding:6px 10px 12px;position:relative}
+#board-stage{position:relative;background:linear-gradient(160deg,#FFFAFC 0%,#F8F0FF 100%);
+  border-radius:22px;padding:8px;
+  box-shadow:inset 0 2px 8px rgba(195,177,225,.25),0 6px 0 rgba(255,123,172,.18),
+    0 12px 24px rgba(45,27,78,.12);border:3px solid var(--pink-lt)}
+#board-stage::before{content:'';position:absolute;top:-12px;left:18px;right:18px;height:8px;
+  background:linear-gradient(90deg,var(--pink) 0%,var(--lavender) 50%,var(--sky) 100%);
+  border-radius:4px;opacity:.65}
+.deco-cloud{position:absolute;top:-22px;font-size:24px;pointer-events:none;
+  animation:bobbing 3s infinite ease-in-out}
+.deco-cloud.left{left:-14px;animation-delay:0s}
+.deco-cloud.right{right:-14px;animation-delay:1.5s}
+@keyframes bobbing{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.deco-paw{position:absolute;font-size:14px;opacity:.35;pointer-events:none}
+.deco-paw.tl{top:6px;left:6px;transform:rotate(-20deg)}
+.deco-paw.tr{top:6px;right:6px;transform:rotate(20deg)}
+.deco-paw.bl{bottom:6px;left:6px;transform:rotate(-160deg)}
+.deco-paw.br{bottom:6px;right:6px;transform:rotate(160deg)}
+#board{position:relative;background:rgba(255,255,255,.4);border-radius:14px}
+.cell{position:absolute;border-radius:11px;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;
+  transition:transform .22s cubic-bezier(.34,1.56,.64,1),
+    left .25s cubic-bezier(.34,1.56,.64,1),top .35s cubic-bezier(.5,1.6,.5,1);
+  user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;will-change:transform}
+.cell img{width:78%;height:78%;pointer-events:none;
+  animation:breathe 2.6s ease-in-out infinite;filter:drop-shadow(0 1px 1px rgba(0,0,0,.08))}
+@keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+.cell.entering{animation:enterSpin .45s cubic-bezier(.34,1.56,.64,1)}
+@keyframes enterSpin{0%{transform:scale(.2) rotate(-180deg);opacity:0}
+  60%{transform:scale(1.12) rotate(15deg);opacity:1}100%{transform:scale(1) rotate(0);opacity:1}}
+.cell.selected{z-index:10;box-shadow:0 0 0 3px var(--pink),0 0 24px rgba(255,123,172,.5);
+  animation:selectedPulse .5s infinite alternate}
+@keyframes selectedPulse{to{box-shadow:0 0 0 4px var(--pink),0 0 32px rgba(255,123,172,.7)}}
+.cell.hint{animation:hintBounce 1s infinite}
+@keyframes hintBounce{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+.cell.popping{animation:popOut .42s ease forwards;pointer-events:none}
+@keyframes popOut{
+  0%{transform:scale(1);filter:brightness(1)}
+  18%{transform:scale(1.18);filter:brightness(2.6) saturate(1.5)}
+  45%{transform:scale(1.5) rotate(-12deg);filter:brightness(1.3)}
+  100%{transform:scale(0) rotate(20deg);opacity:0;filter:brightness(1)}}
+.cell.shake{animation:shakeBack .35s}
+@keyframes shakeBack{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-6px)}
+  40%,80%{transform:translateX(6px)}}
+.cell-special{background:radial-gradient(circle,#FFF5BA,#FFD700)!important;
+  box-shadow:0 0 12px rgba(255,215,0,.6);animation:specialGlow 1.5s infinite alternate}
+@keyframes specialGlow{to{box-shadow:0 0 24px rgba(255,215,0,.9)}}
+.cell-rainbow{background:linear-gradient(135deg,#FF7BAC,#FFD700,#52D9A0,#7BC8F6,#C3B1E1)!important;
+  background-size:200% 200%!important;animation:rainbowSlide 2s infinite linear;
+  box-shadow:0 0 18px rgba(195,177,225,.7)}
+@keyframes rainbowSlide{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+.particle{position:absolute;pointer-events:none;width:14px;height:14px;
+  font-size:14px;line-height:14px;text-align:center;
+  animation:particleFly .7s ease-out forwards;z-index:20}
+@keyframes particleFly{0%{transform:translate(0,0) scale(.5);opacity:1}
+  20%{transform:translate(calc(var(--dx)*.4),calc(var(--dy)*.4)) scale(1);opacity:1}
+  100%{transform:translate(var(--dx),var(--dy)) scale(.2);opacity:0}}
+@keyframes boardShake{0%,100%{transform:translate(0,0)}
+  10%{transform:translate(-4px,-2px)}20%{transform:translate(4px,2px)}
+  30%{transform:translate(-3px,2px)}40%{transform:translate(3px,-2px)}
+  50%{transform:translate(-2px,3px)}60%{transform:translate(2px,-2px)}
+  70%{transform:translate(-1px,1px)}80%{transform:translate(1px,-1px)}}
+.shake-board{animation:boardShake .42s}
+.match-ring{position:absolute;border-radius:50%;border:5px solid var(--pink);
+  pointer-events:none;animation:ringExpand .55s ease-out forwards;z-index:18;
+  transform:translate(-50%,-50%);width:20px;height:20px}
+@keyframes ringExpand{0%{width:20px;height:20px;opacity:.9;border-width:6px}
+  100%{width:140px;height:140px;opacity:0;border-width:1px}}
+#fever-banner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);
+  background:linear-gradient(135deg,#FF7BAC,#FFD700);color:var(--white);
+  padding:14px 28px;font-size:24px;font-weight:700;border-radius:50px;
+  box-shadow:0 8px 24px rgba(255,123,172,.6);pointer-events:none;z-index:30;opacity:0;white-space:nowrap}
+#fever-banner.show{animation:feverIn 1.4s ease}
+@keyframes feverIn{0%{transform:translate(-50%,-50%) scale(0) rotate(-15deg);opacity:0}
+  20%{transform:translate(-50%,-50%) scale(1.2) rotate(8deg);opacity:1}
+  60%{transform:translate(-50%,-50%) scale(1) rotate(0);opacity:1}
+  100%{transform:translate(-50%,-50%) scale(.8);opacity:0}}
+.combo-popup{position:absolute;pointer-events:none;font-weight:700;color:var(--pink);font-size:22px;
+  text-shadow:2px 2px 0 var(--white),-2px -2px 0 var(--white),
+    2px -2px 0 var(--white),-2px 2px 0 var(--white);
+  animation:comboFloat 1s ease-out forwards;z-index:25}
+@keyframes comboFloat{0%{transform:translateY(0) scale(.5);opacity:0}
+  20%{transform:translateY(-10px) scale(1.2);opacity:1}
+  100%{transform:translateY(-50px) scale(.8);opacity:0}}
+#lb-screen{padding:20px}
+.lb-header{display:flex;align-items:center;gap:12px;margin-bottom:20px;
+  padding-bottom:16px;border-bottom:2px solid var(--pink-lt)}
+.lb-back{background:none;border:none;font-size:22px;cursor:pointer;padding:4px;color:var(--pink)}
+.lb-title{font-size:22px;font-weight:700}
+.lb-tabs{display:flex;gap:8px;margin-bottom:16px}
+.lb-tab{flex:1;padding:8px;background:transparent;border:2px solid var(--pink-lt);
+  border-radius:10px;font-family:inherit;font-size:13px;font-weight:600;color:var(--muted);
+  cursor:pointer;transition:all .15s}
+.lb-tab.active{background:var(--pink);color:var(--white);border-color:var(--pink)}
+#lb-list{overflow-y:auto;max-height:calc(100svh - 220px);display:flex;flex-direction:column;gap:8px}
+.lb-row{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--white);
+  border:2px solid var(--pink-lt);border-radius:var(--r-sm)}
+.lb-rank{font-size:18px;font-weight:700;width:28px;text-align:center}
+.lb-rank.gold{color:#F59E0B}.lb-rank.silver{color:#94A3B8}.lb-rank.bronze{color:#C07849}
+.lb-callsign{flex:1;font-size:15px;font-weight:600}
+.lb-score{font-size:16px;font-weight:700;color:var(--pink)}
+.lb-grade{font-size:11px;color:var(--muted);padding:2px 8px;background:var(--pink-bg);border-radius:20px}
+.lb-empty{text-align:center;padding:40px;color:var(--muted);font-size:15px}
+.overlay{position:fixed;inset:0;background:rgba(45,27,78,.45);display:flex;align-items:center;
+  justify-content:center;z-index:100;padding:24px;backdrop-filter:blur(4px)}
+.overlay.hidden{display:none}
+.modal{background:var(--white);border-radius:var(--r);padding:28px 24px;width:100%;
+  max-width:360px;box-shadow:var(--shadow)}
+.modal-title{font-size:26px;font-weight:700;text-align:center;margin-bottom:4px}
+.modal-sub{font-size:15px;color:var(--muted);text-align:center;margin-bottom:24px}
+.fgroup{margin-bottom:16px}
+.flabel{display:block;font-size:14px;font-weight:600;margin-bottom:6px}
+.finput,.fselect{width:100%;padding:12px 16px;border:2px solid var(--pink-lt);
+  border-radius:var(--r-sm);font-family:inherit;font-size:16px;color:var(--purple);
+  background:var(--pink-bg);outline:none;transition:border-color .18s}
+.finput:focus,.fselect:focus{border-color:var(--pink)}
+.fselect{appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23FF7BAC' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 16px center}
+.fhint{font-size:12px;color:var(--muted);margin-top:4px}
+.ferror{font-size:13px;color:#E53E3E;margin-top:10px;display:none}
+.ferror.show{display:block}
+#result-score{font-size:64px;font-weight:700;text-align:center;color:var(--pink);
+  line-height:1;margin:16px 0 8px;animation:scorePop .6s ease}
+@keyframes scorePop{0%{transform:scale(.3);opacity:0}60%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
+#result-best{font-size:14px;color:var(--muted);text-align:center;margin-bottom:20px}
+.result-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--pink-lt)}
+.result-row:last-child{border-bottom:none}
+.result-row span:first-child{color:var(--muted);font-size:15px}
+.result-row span:last-child{font-weight:700}
+#unlock-toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--white);border:2px solid var(--yellow);border-radius:16px;padding:12px 20px;
+  display:flex;align-items:center;gap:12px;box-shadow:0 4px 20px rgba(255,215,0,.3);
+  opacity:0;transition:all .3s;pointer-events:none;z-index:50;white-space:nowrap}
+#unlock-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#ut-icon{font-size:30px}
+.ut-title{font-size:14px;font-weight:700}
+.ut-sub{font-size:12px;color:var(--muted)}
+#info-btn{position:fixed;bottom:14px;right:14px;width:26px;height:26px;border-radius:50%;
+  background:rgba(45,27,78,.07);border:none;font-size:13px;color:var(--muted);cursor:pointer;z-index:10}
+#countdown-overlay{position:absolute;inset:0;background:rgba(255,240,247,.85);
+  display:flex;align-items:center;justify-content:center;z-index:40;backdrop-filter:blur(2px)}
+#countdown-overlay.hidden{display:none}
+#countdown-num{font-size:120px;font-weight:700;color:var(--pink);animation:countPop .9s ease}
+@keyframes countPop{0%{transform:scale(.3);opacity:0}30%{transform:scale(1.3);opacity:1}
+  70%{transform:scale(1);opacity:1}100%{transform:scale(.7);opacity:0}}
+
+/* === Email Opt-in Modal (STELLAR DRIVE pattern) === */
+#email-modal{z-index:200;animation:emFadeIn .25s ease}
+#email-modal.hidden{display:none}
+@keyframes emFadeIn{from{opacity:0}to{opacity:1}}
+.em-card{background:var(--white);border-radius:22px;padding:28px 24px 22px;
+  width:100%;max-width:340px;border:2px solid var(--pink-lt);
+  box-shadow:0 12px 40px rgba(255,123,172,.25);animation:emSlideUp .3s ease}
+@keyframes emSlideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.em-icon{font-size:38px;text-align:center;margin-bottom:8px}
+.em-title{font-size:20px;font-weight:700;text-align:center;letter-spacing:1.5px;
+  color:var(--purple);margin-bottom:14px}
+.em-body{font-size:14px;line-height:1.6;color:var(--muted);text-align:center;margin-bottom:18px}
+.em-body strong{color:var(--pink);font-weight:700}
+.em-input{width:100%;padding:12px 14px;border:2px solid var(--pink-lt);border-radius:12px;
+  background:var(--pink-bg);font-family:inherit;font-size:15px;color:var(--purple);
+  outline:none;margin-bottom:6px;transition:border-color .18s}
+.em-input:focus{border-color:var(--pink)}
+.em-error{font-size:12px;color:#E53E3E;margin:4px 0 8px;display:none;text-align:center}
+.em-error.show{display:block}
+.em-buttons{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.em-btn-primary{background:var(--pink);color:var(--white);border:none;padding:13px;
+  border-radius:14px;font-family:inherit;font-weight:700;font-size:14px;
+  letter-spacing:1.2px;cursor:pointer;transition:transform .12s;
+  box-shadow:0 4px 14px rgba(255,123,172,.35)}
+.em-btn-primary:active{transform:scale(.97)}
+.em-btn-primary:disabled{opacity:.6;cursor:not-allowed}
+.em-btn-skip{background:transparent;border:none;color:var(--muted);font-family:inherit;
+  font-size:12px;letter-spacing:1px;padding:8px;cursor:pointer;font-weight:600}
+.em-btn-skip:hover{color:var(--purple)}
+.em-note{text-align:center;font-size:11px;color:var(--muted);margin-top:14px;line-height:1.5}
+.em-success{text-align:center;padding:18px 0 8px}
+.em-success-icon{font-size:54px;margin-bottom:10px}
+.em-success-title{font-size:18px;font-weight:700;color:var(--mint);
+  letter-spacing:1.5px;margin-bottom:10px}
+.em-success-body{font-size:14px;color:var(--muted);line-height:1.55}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="screen active" id="loading-screen">
+    <div class="loading-emoji" id="loading-emoji">🐾</div>
+    <div class="loading-label" id="loading-label">Loading...</div>
+  </div>
+
+  <div class="screen" id="home-screen">
+    <div class="home-hero">
+      <span class="home-paws">🐾</span>
+      <div class="home-title">PET POP</div>
+      <div class="home-tagline">Match cute pets in 60 seconds!</div>
+    </div>
+    <div class="player-card">
+      <div class="player-avatar" id="home-avatar">🐶</div>
+      <div>
+        <div class="player-callsign" id="home-callsign">—</div>
+        <div class="player-sub">Best: <strong id="home-best">0</strong></div>
+      </div>
+    </div>
+    <button class="btn btn-pink"  id="play-btn">🎮 Play</button>
+    <button class="btn btn-sky"   id="lb-btn">🏆 Leaderboard</button>
+    <button class="btn btn-ghost" id="dex-btn">📚 Pet Dex (Coming Soon)</button>
+  </div>
+
+  <div class="screen" id="game-screen">
+    <button id="sound-toggle" aria-label="Sound">🔊</button>
+    <audio id="bgm-audio" src="bgm.mp3" loop preload="auto"></audio>
+    <div id="time-bar-track"><div id="time-bar-fill"></div></div>
+    <div id="game-header">
+      <div class="stat-card">
+        <div class="stat-label">Score</div>
+        <div class="stat-value" id="score-disp">0</div>
+      </div>
+      <div id="timer-wrap">
+        <svg id="timer-svg" width="64" height="64" viewBox="0 0 64 64">
+          <circle cx="32" cy="32" r="28" fill="none" stroke="#FFD6E8" stroke-width="5"/>
+          <circle id="timer-arc" cx="32" cy="32" r="28" fill="none"
+                  stroke="#FF7BAC" stroke-width="5"
+                  stroke-dasharray="175.9" stroke-dashoffset="0" stroke-linecap="round"/>
+        </svg>
+        <div id="timer-text">60</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Combo</div>
+        <div class="stat-value" id="combo-disp">0</div>
+      </div>
+    </div>
+    <div id="board-frame">
+      <div id="board-stage">
+        <span class="deco-cloud left">☁️</span>
+        <span class="deco-cloud right">☁️</span>
+        <span class="deco-paw tl">🐾</span>
+        <span class="deco-paw tr">🐾</span>
+        <span class="deco-paw bl">🐾</span>
+        <span class="deco-paw br">🐾</span>
+        <div id="board"></div>
+        <div id="fever-banner">FEVER!</div>
+        <div id="countdown-overlay" class="hidden">
+          <div id="countdown-num">3</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen" id="lb-screen">
+    <div class="lb-header">
+      <button class="lb-back" id="lb-back">←</button>
+      <div class="lb-title">🏆 Leaderboard</div>
+    </div>
+    <div class="lb-tabs">
+      <button class="lb-tab active" data-range="alltime">All-Time</button>
+      <button class="lb-tab" data-range="weekly">This Week</button>
+      <button class="lb-tab" data-range="daily">Today</button>
+    </div>
+    <div id="lb-list"><div class="lb-empty">Loading...</div></div>
+  </div>
+
+</div>
+
+<div class="overlay" id="signup-modal">
+<div class="modal">
+  <div class="modal-title">🐾 PET POP</div>
+  <div class="modal-sub">Pick a callsign to start!</div>
+  <div class="fgroup">
+    <label class="flabel" for="cs-input">Callsign</label>
+    <input class="finput" id="cs-input" type="text" placeholder="e.g. PuppyMaster99" maxlength="20" autocomplete="off">
+    <div class="fhint">Letters, numbers, _ (2–20 chars). Cannot be changed.</div>
+  </div>
+  <div class="fgroup">
+    <label class="flabel" for="gr-input">Grade <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+    <select class="fselect" id="gr-input">
+      <option value="">Prefer not to say</option>
+      <option value="K">Kindergarten</option>
+      <option value="1">Grade 1</option><option value="2">Grade 2</option>
+      <option value="3">Grade 3</option><option value="4">Grade 4</option>
+      <option value="5">Grade 5</option><option value="6">Grade 6</option>
+      <option value="7">Grade 7</option><option value="8">Grade 8</option>
+      <option value="9">Grade 9</option><option value="10">Grade 10</option>
+      <option value="11">Grade 11</option><option value="12">Grade 12</option>
+      <option value="family">Family / Other</option>
+    </select>
+  </div>
+  <div class="ferror" id="su-err"></div>
+  <button class="btn btn-pink" id="su-btn" style="margin-top:8px">Start →</button>
+</div>
+</div>
+
+<div class="overlay hidden" id="result-modal">
+<div class="modal">
+  <div class="modal-title">Time's Up!</div>
+  <div id="result-score">0</div>
+  <div id="result-best">New high score! 🎉</div>
+  <div style="margin:16px 0">
+    <div class="result-row"><span>Max Combo</span><span id="res-combo">0</span></div>
+    <div class="result-row"><span>Total Matches</span><span id="res-total">0</span></div>
+    <div class="result-row"><span>Last Pop</span><span id="res-lastpop">—</span></div>
+  </div>
+  <button class="btn btn-pink" id="replay-btn">Play Again</button>
+  <button class="btn btn-ghost" id="home-from-result-btn" style="margin-top:8px">Home</button>
+</div>
+</div>
+
+<div class="overlay hidden" id="email-modal">
+<div class="em-card">
+  <div id="em-content">
+    <div class="em-icon">🐾</div>
+    <div class="em-title">STAY IN THE LOOP</div>
+    <div class="em-body">
+      Get your weekly rank every Sunday + <strong>early access</strong> to new games we launch.
+    </div>
+    <input class="em-input" id="em-input" type="email"
+           placeholder="player@gmail.com" autocomplete="email">
+    <div class="em-error" id="em-error"></div>
+    <div class="em-buttons">
+      <button class="em-btn-primary" id="em-submit">SUBSCRIBE</button>
+      <button class="em-btn-skip" id="em-skip">MAYBE LATER</button>
+    </div>
+    <div class="em-note">Be first to play. Unsubscribe anytime.</div>
+  </div>
+  <div class="em-success" id="em-success" style="display:none">
+    <div class="em-success-icon">🎉</div>
+    <div class="em-success-title">YOU'RE IN!</div>
+    <div class="em-success-body">
+      Welcome to the pack!<br>
+      You'll hear from us first when new games launch.
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="overlay hidden" id="info-modal">
+<div class="modal" style="max-width:280px;text-align:center">
+  <div style="font-size:22px;font-weight:700;margin-bottom:12px">PET POP 🐾</div>
+  <div style="font-size:13px;color:var(--muted);line-height:1.8">
+    Made with ❤️ by <strong>nicejob.us</strong><br>
+    Pet icons: <a href="https://github.com/jdecked/twemoji" target="_blank" rel="noopener" style="color:var(--pink)">Twemoji</a> · CC-BY 4.0<br>
+    © 2026 HeyKorean / mybumo
+  </div>
+  <button class="btn btn-ghost" id="info-close-btn" style="margin-top:20px;max-width:120px;margin-inline:auto">Close</button>
+</div>
+</div>
+
+<div id="unlock-toast">
+  <span id="ut-icon">🦊</span>
+  <div><div class="ut-title">New Pet Unlocked!</div><div class="ut-sub" id="ut-name"></div></div>
+</div>
+
+<button id="info-btn" aria-label="Info">ⓘ</button>
+
+<script>
+'use strict';
+const SUPABASE_URL  = 'https://tlpzztuxttsobhqprosk.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRscHp6dHV4dHRzb2JocXByb3NrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2Mzg2NDQsImV4cCI6MjA5MzIxNDY0NH0.gMP2SO2NCnbWbknHMObs11Z8vWH3Wa6_3bAGobV9_GU';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+const TW = cp => `https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/${cp}.svg`;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+const PETPOP_DEX = {
+  base: [
+    { id:'dog',      name_en:'Dog',      cp:'1f436' },
+    { id:'cat',      name_en:'Cat',      cp:'1f431' },
+    { id:'rabbit',   name_en:'Rabbit',   cp:'1f430' },
+    { id:'hamster',  name_en:'Hamster',  cp:'1f439' },
+    { id:'parrot',   name_en:'Parrot',   cp:'1f99c' },
+    { id:'turtle',   name_en:'Turtle',   cp:'1f422' },
+    { id:'goldfish', name_en:'Goldfish', cp:'1f420' },
+  ],
+  score_tier: [
+    { id:'pig',     name_en:'Pig',     cp:'1f437', threshold:5000   },
+    { id:'cow',     name_en:'Cow',     cp:'1f42e', threshold:12000  },
+    { id:'chick',   name_en:'Chick',   cp:'1f424', threshold:25000  },
+    { id:'frog',    name_en:'Frog',    cp:'1f438', threshold:45000  },
+    { id:'penguin', name_en:'Penguin', cp:'1f427', threshold:75000  },
+    { id:'koala',   name_en:'Koala',   cp:'1f428', threshold:120000 },
+    { id:'panda',   name_en:'Panda',   cp:'1f43c', threshold:200000 },
+  ],
+  mission: [
+    { id:'fox',       name_en:'Fox',       cp:'1f98a', mid:'lastpop_5',    desc_en:'Last Pop ×5' },
+    { id:'tiger',     name_en:'Tiger',     cp:'1f42f', mid:'streak_3_30k', desc_en:'30k+ in 3 games' },
+    { id:'lion',      name_en:'Lion',      cp:'1f981', mid:'score_50k',    desc_en:'50k in one game' },
+    { id:'unicorn',   name_en:'Unicorn',   cp:'1f984', mid:'combo_30',     desc_en:'Reach 30x combo' },
+    { id:'butterfly', name_en:'Butterfly', cp:'1f98b', mid:'master_7',     desc_en:'30+ matches × 7 species' },
+  ]
+};
+const ALL_PETS = [...PETPOP_DEX.base, ...PETPOP_DEX.score_tier, ...PETPOP_DEX.mission];
+const BOARD_PETS = PETPOP_DEX.base;
+const PET_BY_ID = Object.fromEntries(ALL_PETS.map(p => [p.id, p]));
+
+const BAD_WORDS = ['fuck','shit','ass','bitch','cunt','damn','dick','cock','pussy','nigger','nigga','faggot','fag','retard','whore','slut'];
+const normLeet = s => s.toLowerCase().replace(/0/g,'o').replace(/1/g,'i').replace(/3/g,'e')
+  .replace(/4/g,'a').replace(/5/g,'s').replace(/\$/g,'s').replace(/[@]/g,'a').replace(/!/g,'i');
+const hasBadWord = s => BAD_WORDS.some(w => normLeet(s.replace(/[\s_\-\.]/g,'')).includes(w));
+const validCallsign = s => /^[A-Za-z0-9_]{2,20}$/.test(s) && !hasBadWord(s);
+
+let player = null;
+const petImg = {};
+const save = p => localStorage.setItem('petpop_v1', JSON.stringify(p));
+const load = () => { try{ return JSON.parse(localStorage.getItem('petpop_v1')); }catch{ return null; } };
+const show = id => {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+};
+function preload(){
+  return Promise.all(ALL_PETS.map(p => new Promise(res => {
+    const img = new Image();
+    img.onload = img.onerror = res;
+    img.src = TW(p.cp);
+    petImg[p.id] = img;
+  })));
+}
+const petEmoji = cp => String.fromCodePoint(parseInt(cp,16));
+
+async function fetchPlayer(id){
+  const {data} = await db.from('petpop_players').select('*').eq('id',id).single();
+  return data;
+}
+async function createPlayer(callsign, grade){
+  const {data,error} = await db.from('petpop_players')
+    .insert({callsign, grade:grade||null})
+    .select().single();
+  if(error) throw error;
+  return data;
+}
+async function patchPlayer(id, patch){
+  const {error} = await db.from('petpop_players').update(patch).eq('id',id);
+  if(error) console.error('patchPlayer',error);
+}
+async function insertSession(payload){
+  const {error} = await db.from('petpop_sessions').insert(payload);
+  if(error) console.error('insertSession',error);
+}
+
+let soundOn = localStorage.getItem('petpop_sound') !== 'off';
+let toneReady = false;
+let synthFX, synthKick, synthCrash, synthMetal;
+let bgmAudio = null;
+
+async function initSound(){
+  if(toneReady) return;
+  await Tone.start();
+
+  // SFX 신스 (BGM은 외부 MP3) - v7 펑펑 임팩트용 볼륨 인상
+  synthFX = new Tone.PolySynth(Tone.Synth, {
+    oscillator:{type:'triangle'},
+    envelope:{attack:.005, decay:.1, sustain:.1, release:.2}
+  }).toDestination();
+  synthFX.volume.value = -10;
+
+  synthCrash = new Tone.NoiseSynth({
+    noise:{type:'pink'},
+    envelope:{attack:.001, decay:.1, sustain:0, release:.04}
+  }).toDestination();
+  synthCrash.volume.value = -16;
+
+  synthMetal = new Tone.MetalSynth({
+    frequency:200,
+    envelope:{attack:.001, decay:.15, release:.1},
+    harmonicity:4.1, modulationIndex:24, resonance:3500, octaves:1.2
+  }).toDestination();
+  synthMetal.volume.value = -22;
+
+  synthKick = new Tone.MembraneSynth({
+    pitchDecay:.04, octaves:4,
+    envelope:{attack:.001, decay:.3, sustain:0, release:.1}
+  }).toDestination();
+  synthKick.volume.value = -6;
+
+  bgmAudio = document.getElementById('bgm-audio');
+  bgmAudio.volume = 0.25;
+
+  toneReady = true;
+}
+
+const SFX = {
+  select: () => { if(!soundOn||!toneReady) return; synthFX.triggerAttackRelease('E4','32n'); },
+  swap:   () => { if(!soundOn||!toneReady) return; synthFX.triggerAttackRelease(['C4','G4'],'32n'); },
+  match:  (combo=0) => {
+    if(!soundOn||!toneReady) return;
+    const notes = ['C4','E4','G4','A4','C5','D5','E5','G5'];
+    // 매치마다 항상: 노트 + 베이스 킥 + 크래시 (펑!)
+    synthFX.triggerAttackRelease(notes[Math.min(combo, notes.length-1)],'8n');
+    synthKick.triggerAttackRelease('C2','8n', Tone.now());
+    synthCrash.triggerAttackRelease('32n', Tone.now()+.005);
+    if(combo >= 2) synthCrash.triggerAttackRelease('16n', Tone.now()+.05);
+    if(combo >= 4) synthMetal.triggerAttackRelease('C4','16n', Tone.now()+.02);
+    if(combo >= 6){
+      synthKick.triggerAttackRelease('A1','4n', Tone.now()+.04);
+      synthCrash.triggerAttackRelease('8n', Tone.now()+.08);
+    }
+  },
+  combo: () => {
+    if(!soundOn||!toneReady) return;
+    ['C4','E4','G4','C5'].forEach((n,i) =>
+      synthFX.triggerAttackRelease(n,'32n', Tone.now() + i*.06));
+  },
+  fever: () => {
+    if(!soundOn||!toneReady) return;
+    ['C4','E4','G4','C5','E5','G5','C6'].forEach((n,i) =>
+      synthFX.triggerAttackRelease(n,'16n', Tone.now() + i*.08));
+  },
+  bad: () => { if(!soundOn||!toneReady) return; synthFX.triggerAttackRelease('A3','16n'); },
+  end: () => {
+    if(!soundOn||!toneReady) return;
+    ['C5','G4','E4','C4'].forEach((n,i) =>
+      synthFX.triggerAttackRelease(n,'8n', Tone.now() + i*.15));
+  },
+};
+function startBGM(){
+  if(!soundOn || !bgmAudio) return;
+  bgmAudio.currentTime = 0;
+  bgmAudio.play().catch(e => console.log('BGM play failed:', e?.message || e));
+}
+function stopBGM(){
+  if(!bgmAudio) return;
+  bgmAudio.pause();
+  bgmAudio.currentTime = 0;
+}
+
+document.getElementById('sound-toggle').addEventListener('click', e => {
+  soundOn = !soundOn;
+  e.currentTarget.textContent = soundOn ? '🔊' : '🔇';
+  localStorage.setItem('petpop_sound', soundOn ? 'on' : 'off');
+  if(bgmAudio){
+    if(soundOn && G.active) bgmAudio.play().catch(()=>{});
+    else bgmAudio.pause();
+  }
+});
+document.getElementById('sound-toggle').textContent = soundOn ? '🔊' : '🔇';
+
+let lbRange = 'alltime';
+async function loadLeaderboard(){
+  document.getElementById('lb-list').innerHTML = '<div class="lb-empty">Loading...</div>';
+  const {data,error} = await db.from('petpop_players')
+    .select('callsign,best_score,grade,unlocked_pets')
+    .order('best_score',{ascending:false}).limit(100);
+  if(error || !data){ document.getElementById('lb-list').innerHTML = '<div class="lb-empty">Failed to load</div>'; return; }
+  if(data.length === 0){ document.getElementById('lb-list').innerHTML = '<div class="lb-empty">No players yet 🐾</div>'; }
+  else {
+    const rankCls = i => i===0?'gold':i===1?'silver':i===2?'bronze':'';
+    const rankIco = i => i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1;
+    document.getElementById('lb-list').innerHTML = data.map((p,i) => {
+      const equip = p.unlocked_pets?.equipped || 'dog';
+      const pet = PET_BY_ID[equip] || PETPOP_DEX.base[0];
+      const grade = p.grade ? `<span class="lb-grade">${p.grade}</span>` : '';
+      const self = player && p.callsign === player.callsign
+        ? 'background:var(--pink-bg);border-color:var(--pink);' : '';
+      return `<div class="lb-row" style="${self}">
+        <div class="lb-rank ${rankCls(i)}">${rankIco(i)}</div>
+        <div style="font-size:22px">${petEmoji(pet.cp)}</div>
+        <div class="lb-callsign">${p.callsign} ${grade}</div>
+        <div class="lb-score">${p.best_score.toLocaleString()}</div>
+      </div>`;
+    }).join('');
+  }
+  scheduleEmailModal();
+}
+
+function renderHome(){
+  const equip = player.unlocked_pets?.equipped || 'dog';
+  const pet = PET_BY_ID[equip] || PETPOP_DEX.base[0];
+  document.getElementById('home-avatar').textContent = petEmoji(pet.cp);
+  document.getElementById('home-callsign').textContent = player.callsign;
+  document.getElementById('home-best').textContent = player.best_score.toLocaleString();
+  show('home-screen');
+}
+
+function showSignup(){ document.getElementById('signup-modal').classList.remove('hidden'); }
+function hideSignup(){ document.getElementById('signup-modal').classList.add('hidden'); }
+
+document.getElementById('su-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('su-btn');
+  const err = document.getElementById('su-err');
+  const cs = document.getElementById('cs-input').value.trim();
+  const gr = document.getElementById('gr-input').value;
+  err.classList.remove('show');
+  if(!validCallsign(cs)){
+    err.textContent = 'Callsign: letters, numbers, _ (2–20 chars)';
+    err.classList.add('show'); return;
+  }
+  btn.disabled = true; btn.textContent = 'Signing up...';
+  try{
+    player = await createPlayer(cs, gr);
+    save(player); hideSignup(); renderHome();
+  } catch(e){
+    console.error('signup',e);
+    if(e?.code === '23505'){
+      err.textContent = 'This callsign is taken';
+    } else if(e?.message?.includes('Invalid API key') || e?.message?.includes('JWT')){
+      err.textContent = 'Invalid anon key configuration';
+    } else if(e?.code === '42501' || e?.message?.includes('row-level security')){
+      err.textContent = 'RLS policy issue';
+    } else {
+      err.textContent = `Error: ${e?.message || JSON.stringify(e)}`;
+    }
+    err.classList.add('show');
+  } finally { btn.disabled = false; btn.textContent = 'Start →'; }
+});
+
+// === Email Opt-in (STELLAR DRIVE pattern) ===
+let _emailModalTimer = null;
+
+function shouldShowEmailModal(){
+  if(!player) return false;
+  if(player.email) return false;
+  if(localStorage.getItem('petpop_email_dismissed')) return false;
+  return true;
+}
+function scheduleEmailModal(){
+  if(!shouldShowEmailModal()) return;
+  if(_emailModalTimer) return;
+  _emailModalTimer = setTimeout(() => {
+    _emailModalTimer = null;
+    const lbActive = document.getElementById('lb-screen').classList.contains('active');
+    if(!lbActive) return;
+    const modal = document.getElementById('email-modal');
+    document.getElementById('em-content').style.display = 'block';
+    document.getElementById('em-success').style.display = 'none';
+    document.getElementById('em-error').classList.remove('show');
+    modal.classList.remove('hidden');
+    setTimeout(() => document.getElementById('em-input').focus(), 100);
+  }, 5000);
+}
+function cancelEmailModalSchedule(){
+  if(_emailModalTimer){ clearTimeout(_emailModalTimer); _emailModalTimer = null; }
+}
+function closeEmailModal(){
+  document.getElementById('email-modal').classList.add('hidden');
+}
+
+document.getElementById('em-submit').addEventListener('click', async () => {
+  const input = document.getElementById('em-input');
+  const errEl = document.getElementById('em-error');
+  const btn = document.getElementById('em-submit');
+  const email = input.value.trim().toLowerCase();
+  errEl.classList.remove('show');
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+    errEl.textContent = 'Please enter a valid email';
+    errEl.classList.add('show'); return;
+  }
+  btn.disabled = true; btn.textContent = 'SAVING...';
+  const {error} = await db.from('petpop_players').update({email}).eq('id',player.id);
+  if(error){
+    if(error.code === '23505') errEl.textContent = 'This email is already registered';
+    else errEl.textContent = 'Error saving. Try again.';
+    errEl.classList.add('show');
+    btn.disabled = false; btn.textContent = 'SUBSCRIBE';
+    return;
+  }
+  player.email = email;
+  player.emailSubscribedAt = new Date().toISOString();
+  save(player);
+  document.getElementById('em-content').style.display = 'none';
+  document.getElementById('em-success').style.display = 'block';
+  setTimeout(() => {
+    closeEmailModal();
+    btn.disabled = false; btn.textContent = 'SUBSCRIBE';
+  }, 2600);
+});
+document.getElementById('em-skip').addEventListener('click', () => {
+  localStorage.setItem('petpop_email_dismissed', new Date().toISOString());
+  closeEmailModal();
+});
+document.getElementById('email-modal').addEventListener('click', e => {
+  if(e.target === e.currentTarget){
+    localStorage.setItem('petpop_email_dismissed', new Date().toISOString());
+    closeEmailModal();
+  }
+});
+
+async function checkUnlocks(sess){
+  if(!player) return;
+  const newU = [];
+  const owned = new Set(player.unlocked_pets.owned);
+  const done = new Set(player.unlocked_pets.missions_completed);
+  const prog = player.unlocked_pets.mission_progress || {};
+  for(const p of PETPOP_DEX.score_tier)
+    if(!owned.has(p.id) && player.total_score >= p.threshold){ owned.add(p.id); newU.push(p); }
+  const addM = (mid, petId) => {
+    done.add(mid); owned.add(petId);
+    newU.push(PETPOP_DEX.mission.find(p => p.id === petId));
+  };
+  if(!done.has('combo_30')  && sess.max_combo >= 30) addM('combo_30','unicorn');
+  if(!done.has('score_50k') && sess.score >= 50000)  addM('score_50k','lion');
+  if(!done.has('master_7')){
+    const v = Object.values(sess.pets_matched||{});
+    if(v.length===7 && v.every(c=>c>=30)) addM('master_7','butterfly');
+  }
+  if(!done.has('lastpop_5') && sess.last_pop_bonus){
+    prog.lastpop = (prog.lastpop||0)+1;
+    if(prog.lastpop>=5) addM('lastpop_5','fox');
+  }
+  if(!done.has('streak_3_30k')){
+    const rec = ((prog.recent_scores||[]).concat(sess.score)).slice(-3);
+    prog.recent_scores = rec;
+    if(rec.length===3 && rec.every(s=>s>=30000)) addM('streak_3_30k','tiger');
+  }
+  if(newU.length > 0){
+    const patch = {
+      owned:[...owned], equipped:player.unlocked_pets.equipped,
+      missions_completed:[...done], mission_progress:prog
+    };
+    player.unlocked_pets = patch;
+    save(player);
+    await patchPlayer(player.id, {unlocked_pets:patch});
+    newU.forEach((p,i) => p && setTimeout(()=>showToast(p), i*2200));
+  }
+}
+function showToast(pet){
+  document.getElementById('ut-icon').textContent = petEmoji(pet.cp);
+  document.getElementById('ut-name').textContent = pet.name_en + ' unlocked!';
+  const t = document.getElementById('unlock-toast');
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2800);
+}
+
+const SIZE = 7;
+const GAP = 4;
+let CELL = 48;
+
+const G = {
+  board:[], cells:[], sel:null, busy:false,
+  combo:0, maxCombo:0, score:0, timeLeft:60,
+  petsMatched:{}, lastPop:false, feverActive:false,
+  hintTimer:null, hintCells:null, timerInterval:null, active:false,
+};
+const boardEl = document.getElementById('board');
+const rndPet = () => BOARD_PETS[Math.floor(Math.random()*BOARD_PETS.length)];
+
+// 콤보 빈도 증가용 스마트 스폰: 25% 확률로 5방향 검사
+function smartSpawn(r, c){
+  if(Math.random() < 0.25){
+    const candidates = [];
+    // 2-in-a-row 아래 (수직 매치)
+    if(r+2 < SIZE && G.board[r+1]?.[c]?.id
+       && G.board[r+1][c].id === G.board[r+2]?.[c]?.id){
+      candidates.push(G.board[r+1][c].id);
+    }
+    // 2-in-a-row 왼쪽 (수평 매치)
+    if(c >= 2 && G.board[r]?.[c-1]?.id
+       && G.board[r][c-1].id === G.board[r]?.[c-2]?.id){
+      candidates.push(G.board[r][c-1].id);
+    }
+    // 2-in-a-row 오른쪽 (수평 매치)
+    if(c+2 < SIZE && G.board[r]?.[c+1]?.id
+       && G.board[r][c+1].id === G.board[r]?.[c+2]?.id){
+      candidates.push(G.board[r][c+1].id);
+    }
+    // 샌드위치 수평: 양옆 같은 펫
+    if(c >= 1 && c+1 < SIZE
+       && G.board[r]?.[c-1]?.id === G.board[r]?.[c+1]?.id
+       && G.board[r]?.[c-1]?.id){
+      candidates.push(G.board[r][c-1].id);
+    }
+    // 샌드위치 수직: 위아래 같은 펫
+    if(r >= 1 && r+1 < SIZE
+       && G.board[r-1]?.[c]?.id === G.board[r+1]?.[c]?.id
+       && G.board[r-1]?.[c]?.id){
+      candidates.push(G.board[r-1][c].id);
+    }
+    if(candidates.length > 0){
+      const id = candidates[Math.floor(Math.random()*candidates.length)];
+      const pet = BOARD_PETS.find(p => p.id === id);
+      if(pet) return pet;
+    }
+  }
+  return rndPet();
+}
+
+function genBoard(){
+  const b = [];
+  for(let r=0;r<SIZE;r++){
+    b[r] = [];
+    for(let c=0;c<SIZE;c++){
+      let p;
+      do { p = rndPet(); }
+      while(
+        (c>=2 && b[r][c-1]?.id===p.id && b[r][c-2]?.id===p.id) ||
+        (r>=2 && b[r-1][c]?.id===p.id && b[r-2][c]?.id===p.id)
+      );
+      b[r][c] = {...p, special:null};
+    }
+  }
+  return b;
+}
+
+function findMatches(){
+  const set = new Set();
+  const lines = [];
+  for(let r=0;r<SIZE;r++){
+    let s=0;
+    for(let c=1;c<=SIZE;c++){
+      if(c===SIZE || G.board[r][c]?.id !== G.board[r][s]?.id || !G.board[r][s]){
+        if(c-s>=3 && G.board[r][s]){
+          const cells = [];
+          for(let i=s;i<c;i++){ cells.push([r,i]); set.add(`${r},${i}`); }
+          lines.push({type:'h', cells, len:c-s, petId:G.board[r][s].id});
+        }
+        s = c;
+      }
+    }
+  }
+  for(let c=0;c<SIZE;c++){
+    let s=0;
+    for(let r=1;r<=SIZE;r++){
+      if(r===SIZE || G.board[r]?.[c]?.id !== G.board[s][c]?.id || !G.board[s][c]){
+        if(r-s>=3 && G.board[s][c]){
+          const cells = [];
+          for(let i=s;i<r;i++){ cells.push([i,c]); set.add(`${i},${c}`); }
+          lines.push({type:'v', cells, len:r-s, petId:G.board[s][c].id});
+        }
+        s = r;
+      }
+    }
+  }
+  return {set, lines};
+}
+
+function makeCell(r, c, pet){
+  const el = document.createElement('div');
+  el.className = 'cell entering';
+  el.style.width = CELL+'px';
+  el.style.height = CELL+'px';
+  el.style.background = `var(--pet-${pet.id}, #FFD3DA)`;
+  el.style.left = (c*(CELL+GAP)) + 'px';
+  el.style.top  = (r*(CELL+GAP)) + 'px';
+  el.dataset.r = r; el.dataset.c = c;
+  const img = document.createElement('img');
+  img.src = TW(pet.cp); img.alt = pet.name_en;
+  el.appendChild(img);
+  if(pet.special) applySpecialClass(el, pet.special);
+  setTimeout(()=>el.classList.remove('entering'), 500);
+  return el;
+}
+function applySpecialClass(el, special){
+  el.classList.remove('cell-special','cell-rainbow');
+  if(special === 'bomb') el.classList.add('cell-special');
+  if(special === 'rainbow') el.classList.add('cell-rainbow');
+}
+function updatePos(el, r, c){
+  if(!el) return;
+  el.dataset.r = r; el.dataset.c = c;
+  el.style.left = (c*(CELL+GAP)) + 'px';
+  el.style.top  = (r*(CELL+GAP)) + 'px';
+}
+
+function setBoardLayout(){
+  const wrap = document.getElementById('board-stage');
+  const avail = Math.min(wrap.clientWidth || 380, wrap.clientHeight || 380) - 20;
+  CELL = Math.max(36, Math.floor((avail - (SIZE-1)*GAP) / SIZE));
+}
+
+function renderInitial(){
+  boardEl.innerHTML = '';
+  G.cells = [];
+  const totalW = SIZE*CELL + (SIZE-1)*GAP;
+  boardEl.style.width = totalW+'px';
+  boardEl.style.height = totalW+'px';
+  for(let r=0;r<SIZE;r++){
+    G.cells[r] = [];
+    for(let c=0;c<SIZE;c++){
+      const el = makeCell(r,c,G.board[r][c]);
+      boardEl.appendChild(el);
+      G.cells[r][c] = el;
+    }
+  }
+}
+
+const adj = (a,b) => Math.abs(a[0]-b[0]) + Math.abs(a[1]-b[1]) === 1;
+
+function bindCellInput(){
+  boardEl.addEventListener('pointerdown', e => {
+    if(G.busy || !G.active) return;
+    const cell = e.target.closest('.cell');
+    if(!cell) return;
+    const r = +cell.dataset.r, c = +cell.dataset.c;
+    onTap(r, c);
+  });
+}
+
+function onTap(r, c){
+  resetHint();
+  const cell = G.cells[r][c];
+  if(!G.sel){
+    G.sel = [r,c];
+    cell.classList.add('selected');
+    SFX.select();
+    return;
+  }
+  const [sr, sc] = G.sel;
+  if(sr===r && sc===c){
+    cell.classList.remove('selected');
+    G.sel = null;
+    return;
+  }
+  if(adj([sr,sc],[r,c])){
+    G.cells[sr][sc].classList.remove('selected');
+    G.sel = null;
+    trySwap(sr, sc, r, c);
+  } else {
+    G.cells[sr][sc].classList.remove('selected');
+    G.sel = [r,c];
+    cell.classList.add('selected');
+    SFX.select();
+  }
+}
+
+async function trySwap(r1, c1, r2, c2){
+  G.busy = true;
+  SFX.swap();
+
+  [G.board[r1][c1], G.board[r2][c2]] = [G.board[r2][c2], G.board[r1][c1]];
+  [G.cells[r1][c1], G.cells[r2][c2]] = [G.cells[r2][c2], G.cells[r1][c1]];
+  updatePos(G.cells[r1][c1], r1, c1);
+  updatePos(G.cells[r2][c2], r2, c2);
+  await sleep(280);
+
+  const a = G.board[r1][c1], b = G.board[r2][c2];
+  if(a?.special === 'rainbow' || b?.special === 'rainbow'){
+    const isAR = a?.special === 'rainbow';
+    const targetId = isAR ? b.id : a.id;
+    await triggerRainbow(isAR ? [r1,c1] : [r2,c2], targetId);
+    await cascade();
+    G.combo = 0;
+    document.getElementById('combo-disp').textContent = 0;
+    G.busy = false;
+    scheduleHint();
+    return;
+  }
+
+  const m = findMatches();
+  if(m.set.size === 0){
+    G.cells[r1][c1].classList.add('shake');
+    G.cells[r2][c2].classList.add('shake');
+    SFX.bad();
+    await sleep(350);
+    [G.board[r1][c1], G.board[r2][c2]] = [G.board[r2][c2], G.board[r1][c1]];
+    [G.cells[r1][c1], G.cells[r2][c2]] = [G.cells[r2][c2], G.cells[r1][c1]];
+    updatePos(G.cells[r1][c1], r1, c1);
+    updatePos(G.cells[r2][c2], r2, c2);
+    G.cells[r1][c1].classList.remove('shake');
+    G.cells[r2][c2].classList.remove('shake');
+    await sleep(280);
+    G.busy = false;
+    scheduleHint();
+    return;
+  }
+  G.combo = 0;
+  await cascade();
+  G.busy = false;
+  scheduleHint();
+}
+
+async function triggerRainbow(pos, targetId){
+  const [r,c] = pos;
+  const toClear = new Set();
+  toClear.add(`${r},${c}`);
+  for(let rr=0;rr<SIZE;rr++)
+    for(let cc=0;cc<SIZE;cc++)
+      if(G.board[rr][cc]?.id === targetId) toClear.add(`${rr},${cc}`);
+  G.combo++;
+  G.maxCombo = Math.max(G.maxCombo, G.combo);
+  G.petsMatched[targetId] = (G.petsMatched[targetId]||0) + toClear.size;
+  awardScoreFlat(toClear.size, 0, 1500);
+  SFX.combo();
+  spawnRainbowParticles(r,c);
+  await clearCells(toClear);
+  await applyGravity();
+}
+
+function awardScoreFlat(cleared, bonus4, bonus5){
+  const mult = 1 + G.combo*.2;
+  let pts = cleared * 100 * mult + bonus4 + bonus5;
+  if(G.timeLeft <= 2 && cleared > 0) { pts *= 2; G.lastPop = true; }
+  G.score += Math.round(pts);
+  const sd = document.getElementById('score-disp');
+  sd.textContent = G.score.toLocaleString();
+  sd.classList.remove('flash'); void sd.offsetWidth; sd.classList.add('flash');
+  document.getElementById('combo-disp').textContent = G.combo;
+}
+
+function awardScore(cleared, lines){
+  const mult = 1 + G.combo*.2;
+  let pts = cleared * 100 * mult;
+  for(const l of lines){
+    if(l.len === 4) pts += 500;
+    if(l.len >= 5) pts += 1500;
+    G.petsMatched[l.petId] = (G.petsMatched[l.petId]||0) + l.cells.length;
+  }
+  if(G.timeLeft <= 2 && cleared > 0) { pts *= 2; G.lastPop = true; }
+  G.score += Math.round(pts);
+  const sd = document.getElementById('score-disp');
+  sd.textContent = G.score.toLocaleString();
+  sd.classList.remove('flash'); void sd.offsetWidth; sd.classList.add('flash');
+  document.getElementById('combo-disp').textContent = G.combo;
+}
+
+async function cascade(){
+  while(true){
+    const m = findMatches();
+    if(m.set.size === 0) break;
+    G.combo++;
+    G.maxCombo = Math.max(G.maxCombo, G.combo);
+    SFX.match(G.combo);
+    if(G.combo >= 5 && !G.feverActive) triggerFever();
+    awardScore(m.set.size, m.lines);
+    if(G.combo >= 2) showComboPopup(m.set);
+    if(G.combo >= 3) shakeBoard();
+    spawnMatchRings(m.lines);
+
+    const toClear = new Set(m.set);
+    const promotions = [];
+    for(const line of m.lines){
+      if(line.len >= 5){
+        const [r,c] = line.cells[Math.floor(line.cells.length/2)];
+        promotions.push({r, c, petId:line.petId, type:'rainbow'});
+      } else if(line.len === 4){
+        const [r,c] = line.cells[Math.floor(line.cells.length/2)];
+        if(!promotions.find(p=>p.r===r&&p.c===c))
+          promotions.push({r, c, petId:line.petId, type:'bomb'});
+      }
+    }
+
+    const bombsToTrigger = [];
+    for(const k of toClear){
+      const [r,c] = k.split(',').map(Number);
+      if(G.board[r][c]?.special === 'bomb') bombsToTrigger.push([r,c]);
+    }
+    for(const [br,bc] of bombsToTrigger){
+      for(let dr=-1;dr<=1;dr++)
+        for(let dc=-1;dc<=1;dc++){
+          const nr=br+dr, nc=bc+dc;
+          if(nr>=0&&nr<SIZE&&nc>=0&&nc<SIZE && G.board[nr][nc]) toClear.add(`${nr},${nc}`);
+        }
+      spawnBombParticles(br, bc);
+    }
+
+    await clearCells(toClear);
+
+    for(const p of promotions){
+      const newPet = {...PET_BY_ID[p.petId], special:p.type};
+      G.board[p.r][p.c] = newPet;
+      const el = makeCell(p.r, p.c, newPet);
+      boardEl.appendChild(el);
+      G.cells[p.r][p.c] = el;
+    }
+
+    await applyGravity();
+  }
+  G.combo = 0;
+  document.getElementById('combo-disp').textContent = 0;
+  if(G.feverActive){ G.feverActive = false; }
+}
+
+function shakeBoard(){
+  const stage = document.getElementById('board-stage');
+  stage.classList.remove('shake-board');
+  void stage.offsetWidth;
+  stage.classList.add('shake-board');
+  setTimeout(() => stage.classList.remove('shake-board'), 450);
+}
+
+function spawnMatchRings(lines){
+  const colors = ['var(--pink)','var(--yellow)','var(--mint)','var(--sky)','var(--lavender)'];
+  const color = colors[Math.min(G.combo-1, colors.length-1)];
+  for(const line of lines){
+    const [r, c] = line.cells[Math.floor(line.cells.length/2)];
+    const cx = c*(CELL+GAP) + CELL/2;
+    const cy = r*(CELL+GAP) + CELL/2;
+    const ring = document.createElement('div');
+    ring.className = 'match-ring';
+    ring.style.left = cx + 'px';
+    ring.style.top = cy + 'px';
+    ring.style.borderColor = color;
+    boardEl.appendChild(ring);
+    setTimeout(() => ring.remove(), 600);
+  }
+}
+
+function triggerFever(){
+  G.feverActive = true;
+  const banner = document.getElementById('fever-banner');
+  banner.classList.remove('show'); void banner.offsetWidth; banner.classList.add('show');
+  SFX.fever();
+}
+
+async function clearCells(set){
+  for(const k of set){
+    const [r,c] = k.split(',').map(Number);
+    const el = G.cells[r][c];
+    if(!el) continue;
+    el.classList.add('popping');
+    spawnPopParticles(r, c);
+  }
+  await sleep(360);
+  for(const k of set){
+    const [r,c] = k.split(',').map(Number);
+    const el = G.cells[r][c];
+    if(el && el.parentNode) el.parentNode.removeChild(el);
+    G.board[r][c] = null;
+    G.cells[r][c] = null;
+  }
+}
+
+async function applyGravity(){
+  const emptyByCol = [];
+
+  // Pass 1: 모든 컬럼 shift down (settled 펫 정착)
+  for(let c=0;c<SIZE;c++){
+    let writeR = SIZE-1;
+    for(let r=SIZE-1;r>=0;r--){
+      if(G.board[r][c]){
+        if(writeR !== r){
+          G.board[writeR][c] = G.board[r][c];
+          G.cells[writeR][c] = G.cells[r][c];
+          G.board[r][c] = null;
+          G.cells[r][c] = null;
+          updatePos(G.cells[writeR][c], writeR, c);
+        }
+        writeR--;
+      }
+    }
+    emptyByCol.push(writeR);
+  }
+
+  // Pass 2: 빈 자리에 새 펫 spawn (smartSpawn이 전체 보드를 정확히 볼 수 있음)
+  for(let c=0;c<SIZE;c++){
+    let dropIdx = 0;
+    for(let r=emptyByCol[c]; r>=0; r--){
+      const pet = {...smartSpawn(r, c), special:null};
+      G.board[r][c] = pet;
+      const el = makeCell(r, c, pet);
+      el.style.top = (-(SIZE-r)*(CELL+GAP)) + 'px';
+      boardEl.appendChild(el);
+      G.cells[r][c] = el;
+      requestAnimationFrame(() => {
+        setTimeout(()=>{ el.style.top = (r*(CELL+GAP)) + 'px'; }, dropIdx*30);
+      });
+      dropIdx++;
+    }
+  }
+  await sleep(500);
+}
+
+function spawnPopParticles(r, c){
+  const cx = c*(CELL+GAP) + CELL/2;
+  const cy = r*(CELL+GAP) + CELL/2;
+  const emojis = ['⭐','✨','💫','💖','🌟'];
+  const n = 5 + Math.min(G.combo*2, 12);
+  for(let i=0;i<n;i++){
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.textContent = emojis[Math.floor(Math.random()*emojis.length)];
+    const angle = (Math.PI*2*i)/n + Math.random()*.4;
+    const dist = 40 + Math.random()*30 + G.combo*4;
+    p.style.left = cx+'px'; p.style.top = cy+'px';
+    p.style.setProperty('--dx', Math.cos(angle)*dist+'px');
+    p.style.setProperty('--dy', Math.sin(angle)*dist+'px');
+    boardEl.appendChild(p);
+    setTimeout(()=>p.remove(), 700);
+  }
+}
+function spawnBombParticles(r, c){
+  const cx = c*(CELL+GAP) + CELL/2;
+  const cy = r*(CELL+GAP) + CELL/2;
+  for(let i=0;i<12;i++){
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.textContent = '💥';
+    const angle = (Math.PI*2*i)/12;
+    const dist = 70;
+    p.style.left = cx+'px'; p.style.top = cy+'px';
+    p.style.setProperty('--dx', Math.cos(angle)*dist+'px');
+    p.style.setProperty('--dy', Math.sin(angle)*dist+'px');
+    boardEl.appendChild(p);
+    setTimeout(()=>p.remove(), 700);
+  }
+}
+function spawnRainbowParticles(r, c){
+  const cx = c*(CELL+GAP) + CELL/2;
+  const cy = r*(CELL+GAP) + CELL/2;
+  const emojis = ['🌈','✨','⭐','💖','🌟'];
+  for(let i=0;i<16;i++){
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.textContent = emojis[i % emojis.length];
+    const angle = (Math.PI*2*i)/16;
+    const dist = 80 + Math.random()*40;
+    p.style.left = cx+'px'; p.style.top = cy+'px';
+    p.style.setProperty('--dx', Math.cos(angle)*dist+'px');
+    p.style.setProperty('--dy', Math.sin(angle)*dist+'px');
+    boardEl.appendChild(p);
+    setTimeout(()=>p.remove(), 700);
+  }
+}
+
+function showComboPopup(matchSet){
+  const first = [...matchSet][0].split(',').map(Number);
+  const [r,c] = first;
+  const cx = c*(CELL+GAP) + CELL/2;
+  const cy = r*(CELL+GAP) + CELL/2;
+  const p = document.createElement('div');
+  p.className = 'combo-popup';
+  p.textContent = `${G.combo}x COMBO!`;
+  p.style.left = cx+'px'; p.style.top = cy+'px';
+  boardEl.appendChild(p);
+  setTimeout(()=>p.remove(), 1000);
+  if(G.combo >= 3) SFX.combo();
+}
+
+function findHint(){
+  for(let r=0;r<SIZE;r++){
+    for(let c=0;c<SIZE;c++){
+      if(c<SIZE-1){
+        const t1=G.board[r][c], t2=G.board[r][c+1];
+        G.board[r][c]=t2; G.board[r][c+1]=t1;
+        const has = findMatches().set.size > 0;
+        G.board[r][c]=t1; G.board[r][c+1]=t2;
+        if(has) return [[r,c],[r,c+1]];
+      }
+      if(r<SIZE-1){
+        const t1=G.board[r][c], t2=G.board[r+1][c];
+        G.board[r][c]=t2; G.board[r+1][c]=t1;
+        const has = findMatches().set.size > 0;
+        G.board[r][c]=t1; G.board[r+1][c]=t2;
+        if(has) return [[r,c],[r+1,c]];
+      }
+    }
+  }
+  return null;
+}
+function scheduleHint(){
+  resetHint();
+  G.hintTimer = setTimeout(() => {
+    if(!G.active || G.busy) return;
+    const h = findHint();
+    if(h){
+      G.hintCells = h;
+      h.forEach(([r,c]) => G.cells[r]?.[c]?.classList.add('hint'));
+    } else { reshuffleBoard(); }
+  }, 5000);
+}
+function resetHint(){
+  if(G.hintTimer){ clearTimeout(G.hintTimer); G.hintTimer = null; }
+  if(G.hintCells){
+    G.hintCells.forEach(([r,c]) => G.cells[r]?.[c]?.classList.remove('hint'));
+    G.hintCells = null;
+  }
+}
+async function reshuffleBoard(){
+  G.busy = true;
+  G.board = genBoard();
+  for(let r=0;r<SIZE;r++)
+    for(let c=0;c<SIZE;c++){
+      const el = G.cells[r][c];
+      el.style.background = `var(--pet-${G.board[r][c].id})`;
+      el.querySelector('img').src = TW(G.board[r][c].cp);
+      applySpecialClass(el, null);
+      el.classList.add('entering');
+      setTimeout(()=>el.classList.remove('entering'),500);
+    }
+  await sleep(500);
+  G.busy = false;
+  scheduleHint();
+}
+
+async function startGame(){
+  G.active = false; G.busy = true;
+  G.board = []; G.cells = [];
+  G.sel = null; G.combo = 0; G.maxCombo = 0;
+  G.score = 0; G.timeLeft = 60; G.petsMatched = {};
+  G.lastPop = false; G.feverActive = false;
+
+  document.getElementById('score-disp').textContent = '0';
+  document.getElementById('combo-disp').textContent = '0';
+  document.getElementById('timer-text').textContent = '60';
+  document.getElementById('timer-arc').style.strokeDashoffset = '0';
+  document.getElementById('timer-wrap').classList.remove('urgent');
+  const bar = document.getElementById('time-bar-fill');
+  bar.style.transform = 'scaleX(1)';
+  bar.classList.remove('warning','urgent');
+
+  await initSound();
+  setBoardLayout();
+  G.board = genBoard();
+  if(!findHint()) G.board = genBoard();
+  renderInitial();
+  await runCountdown();
+  startBGM();
+  G.active = true; G.busy = false;
+  startTimer();
+  scheduleHint();
+}
+
+async function runCountdown(){
+  const ov = document.getElementById('countdown-overlay');
+  const num = document.getElementById('countdown-num');
+  ov.classList.remove('hidden');
+  for(const t of ['3','2','1','GO!']){
+    num.textContent = t;
+    num.style.animation = 'none'; void num.offsetWidth;
+    num.style.animation = 'countPop .9s ease';
+    if(toneReady && soundOn) synthFX.triggerAttackRelease(t==='GO!'?'C5':'E4','16n');
+    await sleep(700);
+  }
+  ov.classList.add('hidden');
+}
+
+function startTimer(){
+  const arc = document.getElementById('timer-arc');
+  const txt = document.getElementById('timer-text');
+  const wrap = document.getElementById('timer-wrap');
+  const bar = document.getElementById('time-bar-fill');
+  const FULL = 175.9;
+  G.timerInterval = setInterval(() => {
+    G.timeLeft--;
+    txt.textContent = G.timeLeft;
+    arc.style.strokeDashoffset = FULL * (1 - G.timeLeft/60);
+    bar.style.transform = `scaleX(${Math.max(0,G.timeLeft)/60})`;
+    if(G.timeLeft <= 20 && G.timeLeft > 8) bar.classList.add('warning');
+    if(G.timeLeft <= 8){ bar.classList.remove('warning'); bar.classList.add('urgent'); }
+    if(G.timeLeft <= 5) wrap.classList.add('urgent');
+    if(G.timeLeft <= 0){ clearInterval(G.timerInterval); endGame(); }
+  }, 1000);
+}
+
+async function endGame(){
+  G.active = false; G.busy = true;
+  clearInterval(G.timerInterval);
+  resetHint();
+  stopBGM();
+  SFX.end();
+
+  const sess = {
+    player_id: player.id,
+    score: G.score,
+    max_combo: G.maxCombo,
+    pets_matched: G.petsMatched,
+    last_pop_bonus: G.lastPop,
+    duration_sec: 60,
+  };
+  const newBest = G.score > player.best_score;
+
+  await insertSession(sess);
+  player.total_score = (player.total_score||0) + G.score;
+  player.games_played = (player.games_played||0) + 1;
+  if(newBest) player.best_score = G.score;
+  save(player);
+  await patchPlayer(player.id, {
+    best_score: player.best_score,
+    total_score: player.total_score,
+    games_played: player.games_played,
+    last_played_at: new Date().toISOString(),
+  });
+  await checkUnlocks(sess);
+
+  document.getElementById('result-score').textContent = G.score.toLocaleString();
+  document.getElementById('result-best').textContent = newBest
+    ? '🎉 New high score!' : `Best: ${player.best_score.toLocaleString()}`;
+  document.getElementById('res-combo').textContent = G.maxCombo;
+  document.getElementById('res-total').textContent = Object.values(G.petsMatched).reduce((a,b)=>a+b,0);
+  document.getElementById('res-lastpop').textContent = G.lastPop ? '✨ Bonus ×2' : '—';
+  document.getElementById('result-modal').classList.remove('hidden');
+}
+
+document.getElementById('play-btn').addEventListener('click', async () => {
+  show('game-screen');
+  await startGame();
+});
+document.getElementById('lb-btn').addEventListener('click', () => { show('lb-screen'); loadLeaderboard(); });
+document.getElementById('lb-back').addEventListener('click', () => {
+  cancelEmailModalSchedule();
+  show('home-screen');
+});
+document.querySelectorAll('.lb-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.lb-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    lbRange = tab.dataset.range; loadLeaderboard();
+  });
+});
+document.getElementById('dex-btn').addEventListener('click', () => alert('Pet Dex coming soon 🐾'));
+document.getElementById('replay-btn').addEventListener('click', async () => {
+  document.getElementById('result-modal').classList.add('hidden');
+  show('game-screen');
+  await startGame();
+});
+document.getElementById('home-from-result-btn').addEventListener('click', () => {
+  document.getElementById('result-modal').classList.add('hidden');
+  renderHome();
+});
+document.getElementById('info-btn').addEventListener('click', () => document.getElementById('info-modal').classList.remove('hidden'));
+document.getElementById('info-close-btn').addEventListener('click', () => document.getElementById('info-modal').classList.add('hidden'));
+document.getElementById('info-modal').addEventListener('click', e => { if(e.target===e.currentTarget) e.currentTarget.classList.add('hidden'); });
+
+bindCellInput();
+
+const LOAD_PETS = ['🐶','🐱','🐰','🐹','🦜','🐢','🐠'];
+let li = 0;
+const loadEmoji = document.getElementById('loading-emoji');
+const loadLabel = document.getElementById('loading-label');
+const cycle = setInterval(() => { loadEmoji.textContent = LOAD_PETS[li++ % LOAD_PETS.length]; }, 180);
+
+(async () => {
+  if(SUPABASE_ANON === 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRscHp6dHV4dHRzb2JocXByb3NrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2Mzg2NDQsImV4cCI6MjA5MzIxNDY0NH0.gMP2SO2NCnbWbknHMObs11Z8vWH3Wa6_3bAGobV9_GU' || !SUPABASE_ANON){
+    clearInterval(cycle);
+    loadEmoji.textContent = '⚠️';
+    loadLabel.innerHTML = 'Set <strong>SUPABASE_ANON</strong> in index.html<br>with your anon public key';
+    loadLabel.style.cssText = 'font-size:14px;color:#E53E3E;text-align:center;line-height:1.6;padding:0 24px';
+    return;
+  }
+  await preload();
+  clearInterval(cycle);
+  loadLabel.textContent = 'Ready!';
+  await sleep(400);
+
+  const cached = load();
+  if(cached?.id){
+    loadLabel.textContent = 'Syncing...';
+    const fresh = await fetchPlayer(cached.id);
+    if(fresh){ player = fresh; save(player); renderHome(); return; }
+  }
+  show('home-screen');
+  showSignup();
+})();
+</script>
+</body>
+</html>
