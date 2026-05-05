@@ -380,10 +380,10 @@ body{font-family:'Fredoka',system-ui,sans-serif;background:#FFF0F7;background:va
 .ht-combo-arrow{font-size:13px;color:var(--pink);flex-shrink:0;font-weight:700}
 .ht-combo-result{font-size:11px;font-weight:600;color:var(--purple);flex:1;line-height:1.3}
 .overlay{position:fixed;inset:0;background:rgba(45,27,78,.45);display:flex;align-items:center;
-  justify-content:center;z-index:100;padding:24px;backdrop-filter:blur(4px)}
+  justify-content:center;z-index:100;padding:24px;backdrop-filter:blur(4px);overflow-y:auto}
 .overlay.hidden{display:none}
 .modal{background:var(--white);border-radius:var(--r);padding:28px 24px;width:100%;
-  max-width:360px;box-shadow:var(--shadow)}
+  max-width:360px;box-shadow:var(--shadow);max-height:calc(100vh - 48px);overflow-y:auto}
 .modal-title{font-size:26px;font-weight:700;text-align:center;margin-bottom:4px}
 .modal-sub{font-size:15px;color:var(--muted);text-align:center;margin-bottom:24px}
 .fgroup{margin-bottom:16px}
@@ -754,27 +754,29 @@ body{font-family:'Fredoka',system-ui,sans-serif;background:#FFF0F7;background:va
 <div class="modal">
   <div class="modal-title">🐾 PET POP</div>
   <div class="modal-sub">Pick a callsign to start!</div>
-  <div class="fgroup">
-    <label class="flabel" for="cs-input">Callsign</label>
-    <input class="finput" id="cs-input" type="text" placeholder="e.g. PuppyMaster99" maxlength="20" autocomplete="off">
-    <div class="fhint">Letters, numbers, _ (2–20 chars). Cannot be changed.</div>
-  </div>
-  <div class="fgroup">
-    <label class="flabel" for="gr-input">Grade <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
-    <select class="fselect" id="gr-input">
-      <option value="">Prefer not to say</option>
-      <option value="K">Kindergarten</option>
-      <option value="1">Grade 1</option><option value="2">Grade 2</option>
-      <option value="3">Grade 3</option><option value="4">Grade 4</option>
-      <option value="5">Grade 5</option><option value="6">Grade 6</option>
-      <option value="7">Grade 7</option><option value="8">Grade 8</option>
-      <option value="9">Grade 9</option><option value="10">Grade 10</option>
-      <option value="11">Grade 11</option><option value="12">Grade 12</option>
-      <option value="family">Family / Other</option>
-    </select>
-  </div>
-  <div class="ferror" id="su-err"></div>
-  <button class="btn btn-pink" id="su-btn" style="margin-top:8px">Start →</button>
+  <form id="signup-form" onsubmit="return false;">
+    <div class="fgroup">
+      <label class="flabel" for="cs-input">Callsign</label>
+      <input class="finput" id="cs-input" type="text" placeholder="e.g. PuppyMaster99" maxlength="20" autocomplete="off" autocapitalize="off">
+      <div class="fhint">Letters, numbers, _ (2–20 chars). Cannot be changed.</div>
+    </div>
+    <div class="fgroup">
+      <label class="flabel" for="gr-input">Grade <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+      <select class="fselect" id="gr-input">
+        <option value="">Prefer not to say</option>
+        <option value="K">Kindergarten</option>
+        <option value="1">Grade 1</option><option value="2">Grade 2</option>
+        <option value="3">Grade 3</option><option value="4">Grade 4</option>
+        <option value="5">Grade 5</option><option value="6">Grade 6</option>
+        <option value="7">Grade 7</option><option value="8">Grade 8</option>
+        <option value="9">Grade 9</option><option value="10">Grade 10</option>
+        <option value="11">Grade 11</option><option value="12">Grade 12</option>
+        <option value="family">Family / Other</option>
+      </select>
+    </div>
+    <div class="ferror" id="su-err"></div>
+    <button class="btn btn-pink" id="su-btn" type="submit" style="margin-top:8px">Start →</button>
+  </form>
 </div>
 </div>
 
@@ -1164,7 +1166,12 @@ function renderDailyCard(){
 function showSignup(){ document.getElementById('signup-modal').classList.remove('hidden'); }
 function hideSignup(){ document.getElementById('signup-modal').classList.add('hidden'); }
 
-document.getElementById('su-btn').addEventListener('click', async () => {
+// iOS Safari: select 변경 후 포커스를 강제로 풀어줌 — 다음 탭이 정상 동작하도록
+document.getElementById('gr-input').addEventListener('change', e => {
+  e.target.blur();
+});
+
+async function handleSignup(){
   const btn = document.getElementById('su-btn');
   const err = document.getElementById('su-err');
   const cs = document.getElementById('cs-input').value.trim();
@@ -1192,6 +1199,15 @@ document.getElementById('su-btn').addEventListener('click', async () => {
     }
     err.classList.add('show');
   } finally { btn.disabled = false; btn.textContent = 'Start →'; }
+}
+
+document.getElementById('signup-form').addEventListener('submit', e => {
+  e.preventDefault();
+  handleSignup();
+});
+document.getElementById('su-btn').addEventListener('click', e => {
+  e.preventDefault();
+  handleSignup();
 });
 
 // === Email Opt-in (STELLAR DRIVE pattern) ===
