@@ -66,6 +66,30 @@ body{font-family:'Fredoka',system-ui,sans-serif;background:#FFF0F7;background:va
   justify-content:center;background:var(--pink-bg);border-radius:50%;flex-shrink:0}
 .player-callsign{font-size:20px;font-weight:700}
 .player-sub{font-size:13px;color:var(--muted);margin-top:2px}
+
+.daily-card{position:relative;width:100%;border-radius:20px;overflow:hidden;
+  background:linear-gradient(135deg,#FFE680 0%,#FFD3DA 50%,#DAD0F0 100%);
+  padding:2px;
+  box-shadow:0 6px 20px rgba(255,215,0,.3),0 2px 6px rgba(45,27,78,.08)}
+.daily-card-glow{position:absolute;inset:-50%;
+  background:conic-gradient(from 0deg, transparent 0deg, rgba(255,215,0,.3) 90deg, transparent 180deg, rgba(255,123,172,.3) 270deg, transparent 360deg);
+  animation:dailyGlow 6s linear infinite;pointer-events:none}
+@keyframes dailyGlow{to{transform:rotate(360deg)}}
+.daily-card-content{position:relative;background:var(--white);
+  border-radius:18px;padding:14px 16px}
+.daily-card-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.daily-card-label{font-size:13px;font-weight:700;color:var(--purple);letter-spacing:.4px}
+.daily-card-streak{font-size:12px;font-weight:700;color:#FF7BAC}
+.daily-card-body{font-size:12px;color:var(--muted);line-height:1.45;margin-bottom:10px}
+.daily-card-btn{width:100%;padding:11px;border:none;border-radius:14px;
+  background:linear-gradient(135deg,#FFD700,#FF7BAC);color:var(--white);
+  font-family:inherit;font-size:14px;font-weight:700;letter-spacing:1.5px;
+  cursor:pointer;transition:transform .12s;
+  box-shadow:0 3px 0 rgba(255,123,172,.4)}
+.daily-card-btn:active{transform:scale(.97)}
+.daily-card-btn:disabled{opacity:.7;cursor:not-allowed;transform:none;
+  background:linear-gradient(135deg,#C5C5C5,#9E9E9E);box-shadow:0 3px 0 rgba(45,27,78,.15)}
+.daily-card.done .daily-card-glow{animation:none;opacity:.3}
 .btn{width:100%;padding:14px;border:none;border-radius:var(--r);font-family:inherit;
   font-size:17px;font-weight:700;cursor:pointer;transition:transform .12s;
   display:flex;align-items:center;justify-content:center;gap:8px}
@@ -389,7 +413,22 @@ body{font-family:'Fredoka',system-ui,sans-serif;background:#FFF0F7;background:va
         <div class="player-sub">Best: <strong id="home-best">0</strong></div>
       </div>
     </div>
-    <button class="btn btn-pink"  id="play-btn">🎮 Play</button>
+
+    <div class="daily-card" id="daily-card">
+      <div class="daily-card-glow"></div>
+      <div class="daily-card-content">
+        <div class="daily-card-top">
+          <div class="daily-card-label">🌟 Today's Challenge</div>
+          <div class="daily-card-streak" id="daily-streak">🔥 0 day streak</div>
+        </div>
+        <div class="daily-card-body" id="daily-body">
+          Same board for everyone today.<br>One shot per day.
+        </div>
+        <button class="daily-card-btn" id="daily-btn">PLAY DAILY →</button>
+      </div>
+    </div>
+
+    <button class="btn btn-pink"  id="play-btn">🎮 Free Play</button>
     <button class="btn btn-sky"   id="lb-btn">🏆 Leaderboard</button>
     <button class="btn btn-ghost" id="dex-btn">📚 Pet Dex</button>
   </div>
@@ -557,6 +596,38 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 const TW = cp => `https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/${cp}.svg`;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+// ===== Daily Challenge: deterministic PRNG =====
+function dailyDateStr(){
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+}
+function hashStr(s){
+  let h = 2166136261;
+  for(let i=0;i<s.length;i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+function mulberry32(seed){
+  let s = seed >>> 0;
+  return function(){
+    s |= 0; s = (s + 0x6D2B79F5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+let _rng = Math.random;
+const rnd = () => _rng();
+function setDailyRng(){
+  const seed = hashStr('petpop-' + dailyDateStr());
+  _rng = mulberry32(seed);
+}
+function setFreeRng(){ _rng = Math.random; }
+function yesterdayET(){
+  const today = dailyDateStr();
+  const d = new Date(today + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0,10);
+}
+
 const PETPOP_DEX = {
   base: [
     { id:'dog',      name_en:'Dog',      cp:'1f436' },
@@ -623,6 +694,15 @@ async function createPlayer(callsign, grade){
     .select().single();
   if(error) throw error;
   return data;
+}
+function ensurePlayerDefaults(p){
+  if(p){
+    p.current_streak = p.current_streak || 0;
+    p.best_streak = p.best_streak || 0;
+    p.last_daily_date = p.last_daily_date || null;
+    p.last_daily_score = p.last_daily_score || 0;
+  }
+  return p;
 }
 async function patchPlayer(id, patch){
   const {error} = await db.from('petpop_players').update(patch).eq('id',id);
@@ -732,29 +812,60 @@ document.getElementById('sound-toggle').textContent = soundOn ? '🔊' : '🔇';
 
 let lbRange = 'alltime';
 async function loadLeaderboard(){
-  document.getElementById('lb-list').innerHTML = '<div class="lb-empty">Loading...</div>';
-  const {data,error} = await db.from('petpop_players')
-    .select('callsign,best_score,grade,unlocked_pets')
-    .order('best_score',{ascending:false}).limit(100);
-  if(error || !data){ document.getElementById('lb-list').innerHTML = '<div class="lb-empty">Failed to load</div>'; return; }
-  if(data.length === 0){ document.getElementById('lb-list').innerHTML = '<div class="lb-empty">No players yet 🐾</div>'; }
-  else {
-    const rankCls = i => i===0?'gold':i===1?'silver':i===2?'bronze':'';
-    const rankIco = i => i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1;
-    document.getElementById('lb-list').innerHTML = data.map((p,i) => {
-      const equip = p.unlocked_pets?.equipped || 'dog';
-      const pet = PET_BY_ID[equip] || PETPOP_DEX.base[0];
-      const grade = p.grade ? `<span class="lb-grade">${p.grade}</span>` : '';
-      const self = player && p.callsign === player.callsign
-        ? 'background:var(--pink-bg);border-color:var(--pink);' : '';
-      return `<div class="lb-row" style="${self}">
-        <div class="lb-rank ${rankCls(i)}">${rankIco(i)}</div>
-        <div style="font-size:22px">${petEmoji(pet.cp)}</div>
-        <div class="lb-callsign">${p.callsign} ${grade}</div>
-        <div class="lb-score">${p.best_score.toLocaleString()}</div>
-      </div>`;
-    }).join('');
+  const listEl = document.getElementById('lb-list');
+  listEl.innerHTML = '<div class="lb-empty">Loading...</div>';
+  let rows = null;
+  if(lbRange === 'alltime'){
+    const {data,error} = await db.from('petpop_players')
+      .select('callsign,best_score,grade,unlocked_pets,current_streak')
+      .order('best_score',{ascending:false}).limit(100);
+    if(error){ listEl.innerHTML = '<div class="lb-empty">Failed to load</div>'; return; }
+    rows = (data||[]).map(p => ({
+      callsign:p.callsign, score:p.best_score, grade:p.grade,
+      unlocked_pets:p.unlocked_pets, streak:p.current_streak
+    }));
+  } else {
+    const today = dailyDateStr();
+    let fromDate = today;
+    if(lbRange === 'weekly'){
+      const d = new Date(today + 'T12:00:00Z');
+      d.setUTCDate(d.getUTCDate() - 6);
+      fromDate = d.toISOString().slice(0,10);
+    }
+    const {data,error} = await db.from('petpop_sessions')
+      .select('score, max_combo, daily_date, players:player_id(callsign,grade,unlocked_pets,current_streak)')
+      .eq('mode','daily').gte('daily_date', fromDate).lte('daily_date', today)
+      .order('score',{ascending:false}).limit(100);
+    if(error){ listEl.innerHTML = '<div class="lb-empty">Failed to load</div>'; return; }
+    rows = (data||[]).map(s => ({
+      callsign:s.players?.callsign || '?', score:s.score, grade:s.players?.grade,
+      unlocked_pets:s.players?.unlocked_pets, streak:s.players?.current_streak
+    }));
   }
+  if(!rows || rows.length === 0){
+    const msg = lbRange === 'daily' ? "No daily plays yet today. Be first! 🐾"
+              : lbRange === 'weekly' ? "No daily plays this week yet 🐾"
+              : "No players yet 🐾";
+    listEl.innerHTML = `<div class="lb-empty">${msg}</div>`;
+    scheduleEmailModal();
+    return;
+  }
+  const rankCls = i => i===0?'gold':i===1?'silver':i===2?'bronze':'';
+  const rankIco = i => i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1;
+  listEl.innerHTML = rows.map((p,i) => {
+    const equip = p.unlocked_pets?.equipped || 'dog';
+    const pet = PET_BY_ID[equip] || PETPOP_DEX.base[0];
+    const grade = p.grade ? `<span class="lb-grade">${p.grade}</span>` : '';
+    const streak = (p.streak && p.streak >= 3) ? `<span class="lb-grade">🔥${p.streak}</span>` : '';
+    const self = player && p.callsign === player.callsign
+      ? 'background:var(--pink-bg);border-color:var(--pink);' : '';
+    return `<div class="lb-row" style="${self}">
+      <div class="lb-rank ${rankCls(i)}">${rankIco(i)}</div>
+      <div style="font-size:22px">${petEmoji(pet.cp)}</div>
+      <div class="lb-callsign">${p.callsign} ${grade}${streak}</div>
+      <div class="lb-score">${p.score.toLocaleString()}</div>
+    </div>`;
+  }).join('');
   scheduleEmailModal();
 }
 
@@ -764,7 +875,32 @@ function renderHome(){
   document.getElementById('home-avatar').textContent = petEmoji(pet.cp);
   document.getElementById('home-callsign').textContent = player.callsign;
   document.getElementById('home-best').textContent = player.best_score.toLocaleString();
+  renderDailyCard();
   show('home-screen');
+}
+
+function renderDailyCard(){
+  const today = dailyDateStr();
+  const streak = player.current_streak || 0;
+  const card = document.getElementById('daily-card');
+  const btn = document.getElementById('daily-btn');
+  const body = document.getElementById('daily-body');
+  const streakEl = document.getElementById('daily-streak');
+  const playedToday = player.last_daily_date === today;
+
+  streakEl.textContent = streak > 0 ? `🔥 ${streak} day streak` : 'Build your streak!';
+
+  if(playedToday){
+    card.classList.add('done');
+    btn.disabled = true;
+    btn.textContent = '✓ COME BACK TOMORROW';
+    body.innerHTML = `Today's score: <strong>${(player.last_daily_score||0).toLocaleString()}</strong><br>New board at midnight ET.`;
+  } else {
+    card.classList.remove('done');
+    btn.disabled = false;
+    btn.textContent = 'PLAY DAILY →';
+    body.innerHTML = `Same board for everyone today.<br>One shot per day.`;
+  }
 }
 
 function showSignup(){ document.getElementById('signup-modal').classList.remove('hidden'); }
@@ -783,6 +919,7 @@ document.getElementById('su-btn').addEventListener('click', async () => {
   btn.disabled = true; btn.textContent = 'Signing up...';
   try{
     player = await createPlayer(cs, gr);
+    ensurePlayerDefaults(player);
     save(player); hideSignup(); renderHome();
   } catch(e){
     console.error('signup',e);
@@ -925,9 +1062,10 @@ const G = {
   combo:0, maxCombo:0, score:0, timeLeft:60,
   petsMatched:{}, lastPop:false, feverActive:false,
   hintTimer:null, hintCells:null, timerInterval:null, active:false,
+  mode:'free',
 };
 const boardEl = document.getElementById('board');
-const rndPet = () => BOARD_PETS[Math.floor(Math.random()*BOARD_PETS.length)];
+const rndPet = () => BOARD_PETS[Math.floor(rnd()*BOARD_PETS.length)];
 
 // 콤보 빈도 증가용 스마트 스폰: 25% 확률로 5방향 검사 + 시계 펫 스폰
 function smartSpawn(r, c){
@@ -938,10 +1076,10 @@ function smartSpawn(r, c){
       G.board[r]?.[c-1]?.id === 'clock' ||
       G.board[r]?.[c+1]?.id === 'clock';
     const clockChance = adjClock ? 0.30 : 0.04;
-    if(Math.random() < clockChance) return CLOCK_PET;
+    if(rnd() < clockChance) return CLOCK_PET;
   }
 
-  if(Math.random() < 0.25){
+  if(rnd() < 0.25){
     const candidates = [];
     if(r+2 < SIZE && G.board[r+1]?.[c]?.id
        && G.board[r+1][c].id === G.board[r+2]?.[c]?.id
@@ -969,7 +1107,7 @@ function smartSpawn(r, c){
       candidates.push(G.board[r-1][c].id);
     }
     if(candidates.length > 0){
-      const id = candidates[Math.floor(Math.random()*candidates.length)];
+      const id = candidates[Math.floor(rnd()*candidates.length)];
       const pet = BOARD_PETS.find(p => p.id === id);
       if(pet) return pet;
     }
@@ -1461,7 +1599,7 @@ async function triggerSpecialCombo(r1, c1, r2, c2, a, b){
       for(let c=0;c<SIZE;c++)
         if(G.board[r][c]?.id === targetId){
           toClear.add(`${r},${c}`);
-          if(Math.random() < 0.5) stripeRows.add(r);
+          if(rnd() < 0.5) stripeRows.add(r);
           else stripeCols.add(c);
         }
     for(const sr of stripeRows){
@@ -1724,12 +1862,16 @@ async function reshuffleBoard(){
   scheduleHint();
 }
 
-async function startGame(){
+async function startGame(mode='free'){
   G.active = false; G.busy = true;
+  G.mode = mode;
   G.board = []; G.cells = [];
   G.sel = null; G.combo = 0; G.maxCombo = 0;
   G.score = 0; G.timeLeft = 60; G.petsMatched = {};
   G.lastPop = false; G.feverActive = false;
+
+  if(mode === 'daily') setDailyRng();
+  else setFreeRng();
 
   document.getElementById('score-disp').textContent = '0';
   document.getElementById('combo-disp').textContent = '0';
@@ -1791,6 +1933,7 @@ async function endGame(){
   stopBGM();
   SFX.end();
 
+  const today = dailyDateStr();
   const sess = {
     player_id: player.id,
     score: G.score,
@@ -1798,6 +1941,8 @@ async function endGame(){
     pets_matched: G.petsMatched,
     last_pop_bonus: G.lastPop,
     duration_sec: 60,
+    mode: G.mode,
+    daily_date: G.mode === 'daily' ? today : null,
   };
   const newBest = G.score > player.best_score;
 
@@ -1805,27 +1950,62 @@ async function endGame(){
   player.total_score = (player.total_score||0) + G.score;
   player.games_played = (player.games_played||0) + 1;
   if(newBest) player.best_score = G.score;
+
+  // Daily 모드: 스트릭 업데이트
+  let streakUpdated = false;
+  let streakValue = player.current_streak || 0;
+  if(G.mode === 'daily' && player.last_daily_date !== today){
+    const yesterday = yesterdayET();
+    if(player.last_daily_date === yesterday) streakValue = (player.current_streak||0) + 1;
+    else streakValue = 1;
+    const bestStreak = Math.max(player.best_streak||0, streakValue);
+    player.current_streak = streakValue;
+    player.best_streak = bestStreak;
+    player.last_daily_date = today;
+    player.last_daily_score = G.score;
+    streakUpdated = true;
+  }
+
   save(player);
-  await patchPlayer(player.id, {
+  const patch = {
     best_score: player.best_score,
     total_score: player.total_score,
     games_played: player.games_played,
     last_played_at: new Date().toISOString(),
-  });
+  };
+  if(streakUpdated){
+    patch.current_streak = player.current_streak;
+    patch.best_streak = player.best_streak;
+    patch.last_daily_date = player.last_daily_date;
+    patch.last_daily_score = player.last_daily_score;
+  }
+  await patchPlayer(player.id, patch);
   await checkUnlocks(sess);
 
   document.getElementById('result-score').textContent = G.score.toLocaleString();
-  document.getElementById('result-best').textContent = newBest
-    ? '🎉 New high score!' : `Best: ${player.best_score.toLocaleString()}`;
+  let bestLine = newBest ? '🎉 New high score!' : `Best: ${player.best_score.toLocaleString()}`;
+  if(G.mode === 'daily'){
+    bestLine = `Daily ${today} · 🔥 ${streakValue} day streak`;
+  }
+  document.getElementById('result-best').textContent = bestLine;
   document.getElementById('res-combo').textContent = G.maxCombo;
   document.getElementById('res-total').textContent = Object.values(G.petsMatched).reduce((a,b)=>a+b,0);
   document.getElementById('res-lastpop').textContent = G.lastPop ? '✨ Bonus ×2' : '—';
+
+  // Daily 모드면 Replay 버튼 숨기기
+  document.getElementById('replay-btn').style.display = G.mode === 'daily' ? 'none' : 'flex';
+
   document.getElementById('result-modal').classList.remove('hidden');
 }
 
 document.getElementById('play-btn').addEventListener('click', async () => {
   show('game-screen');
-  await startGame();
+  await startGame('free');
+});
+document.getElementById('daily-btn').addEventListener('click', async () => {
+  if(player.last_daily_date === dailyDateStr()) return;
+  show('game-screen');
+  await startGame('daily');
 });
 document.getElementById('lb-btn').addEventListener('click', () => { show('lb-screen'); loadLeaderboard(); });
 document.getElementById('lb-back').addEventListener('click', () => {
@@ -1893,7 +2073,7 @@ function renderDex(){
 document.getElementById('replay-btn').addEventListener('click', async () => {
   document.getElementById('result-modal').classList.add('hidden');
   show('game-screen');
-  await startGame();
+  await startGame('free');
 });
 document.getElementById('home-from-result-btn').addEventListener('click', () => {
   document.getElementById('result-modal').classList.add('hidden');
@@ -1928,7 +2108,7 @@ const cycle = setInterval(() => { loadEmoji.textContent = LOAD_PETS[li++ % LOAD_
   if(cached?.id){
     loadLabel.textContent = 'Syncing...';
     const fresh = await fetchPlayer(cached.id);
-    if(fresh){ player = fresh; save(player); renderHome(); return; }
+    if(fresh){ player = ensurePlayerDefaults(fresh); save(player); renderHome(); return; }
   }
   show('home-screen');
   showSignup();
