@@ -459,7 +459,7 @@ body{font-family:'Fredoka',system-ui,sans-serif;background:#FFF0F7;background:va
 <script>
 'use strict';
 const SUPABASE_URL  = 'https://tlpzztuxttsobhqprosk.supabase.co';
-const SUPABASE_ANON = 'YOUR_ANON_KEY_HERE';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRscHp6dHV4dHRzb2JocXByb3NrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2Mzg2NDQsImV4cCI6MjA5MzIxNDY0NH0.gMP2SO2NCnbWbknHMObs11Z8vWH3Wa6_3bAGobV9_GU';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 const TW = cp => `https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/${cp}.svg`;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -1510,7 +1510,7 @@ const loadLabel = document.getElementById('loading-label');
 const cycle = setInterval(() => { loadEmoji.textContent = LOAD_PETS[li++ % LOAD_PETS.length]; }, 180);
 
 (async () => {
-  if(SUPABASE_ANON === 'YOUR_ANON_KEY_HERE' || !SUPABASE_ANON){
+  if(SUPABASE_ANON === 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRscHp6dHV4dHRzb2JocXByb3NrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2Mzg2NDQsImV4cCI6MjA5MzIxNDY0NH0.gMP2SO2NCnbWbknHMObs11Z8vWH3Wa6_3bAGobV9_GU' || !SUPABASE_ANON){
     clearInterval(cycle);
     loadEmoji.textContent = '⚠️';
     loadLabel.innerHTML = 'Set <strong>SUPABASE_ANON</strong> in index.html<br>with your anon public key';
