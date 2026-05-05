@@ -223,6 +223,20 @@ body{font-family:'Fredoka',system-ui,sans-serif;background:#FFF0F7;background:va
   20%{transform:translate(-50%,-50%) scale(1.2) rotate(8deg);opacity:1}
   60%{transform:translate(-50%,-50%) scale(1) rotate(0);opacity:1}
   100%{transform:translate(-50%,-50%) scale(.8);opacity:0}}
+#shuffle-banner{position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%) scale(0);
+  background:linear-gradient(135deg,#7BC8F6,#C3B1E1);color:var(--white);
+  padding:18px 32px;font-size:22px;font-weight:700;line-height:1.2;
+  border-radius:24px;text-align:center;
+  box-shadow:0 8px 24px rgba(123,200,246,.55);
+  pointer-events:none;z-index:35;opacity:0;white-space:nowrap}
+#shuffle-banner .sb-bonus{font-size:16px;color:#FFE680;display:inline-block;margin-top:4px}
+#shuffle-banner.show{animation:shuffleIn 1.8s ease}
+@keyframes shuffleIn{
+  0%{transform:translate(-50%,-50%) scale(0) rotate(-200deg);opacity:0}
+  18%{transform:translate(-50%,-50%) scale(1.15) rotate(8deg);opacity:1}
+  60%{transform:translate(-50%,-50%) scale(1) rotate(0);opacity:1}
+  100%{transform:translate(-50%,-50%) scale(.85) rotate(0);opacity:0}}
 .combo-popup{position:absolute;pointer-events:none;font-weight:700;color:var(--pink);font-size:22px;
   text-shadow:2px 2px 0 var(--white),-2px -2px 0 var(--white),
     2px -2px 0 var(--white),-2px 2px 0 var(--white);
@@ -413,6 +427,7 @@ body{font-family:'Fredoka',system-ui,sans-serif;background:#FFF0F7;background:va
         <span class="deco-paw br">🐾</span>
         <div id="board"></div>
         <div id="fever-banner">FEVER!</div>
+        <div id="shuffle-banner">🔄 New Board!<br><span class="sb-bonus">+5s</span></div>
         <div id="countdown-overlay" class="hidden">
           <div id="countdown-num">3</div>
         </div>
@@ -1293,6 +1308,11 @@ async function cascade(){
   G.combo = 0;
   document.getElementById('combo-disp').textContent = 0;
   if(G.feverActive){ G.feverActive = false; }
+
+  // 캐스케이드 종료 후 매치 가능 여부 즉시 검사
+  if(G.active && G.timeLeft > 5 && !findHint()){
+    await reshuffleBoard();
+  }
 }
 
 function spawnRowFlash(r){
@@ -1620,6 +1640,17 @@ function showComboPopup(matchSet){
 }
 
 function findHint(){
+  // 무지개 셀이 있으면 인접 셀과 스왑하는 게 항상 유효한 수
+  for(let r=0;r<SIZE;r++){
+    for(let c=0;c<SIZE;c++){
+      if(G.board[r][c]?.special === 'rainbow'){
+        if(c+1<SIZE && G.board[r][c+1]) return [[r,c],[r,c+1]];
+        if(r+1<SIZE && G.board[r+1][c]) return [[r,c],[r+1,c]];
+        if(c-1>=0 && G.board[r][c-1]) return [[r,c],[r,c-1]];
+        if(r-1>=0 && G.board[r-1][c]) return [[r,c],[r-1,c]];
+      }
+    }
+  }
   for(let r=0;r<SIZE;r++){
     for(let c=0;c<SIZE;c++){
       if(c<SIZE-1){
@@ -1660,17 +1691,35 @@ function resetHint(){
 }
 async function reshuffleBoard(){
   G.busy = true;
+
+  // 배너 등장
+  const banner = document.getElementById('shuffle-banner');
+  banner.classList.remove('show'); void banner.offsetWidth; banner.classList.add('show');
+
+  // 사운드: 셔플 차임
+  if(soundOn && toneReady){
+    ['C4','E4','G4','C5','E5','G5','C6'].forEach((n,i) =>
+      synthFX.triggerAttackRelease(n,'16n', Tone.now() + i*.06));
+  }
+
+  await sleep(700);
+
   G.board = genBoard();
   for(let r=0;r<SIZE;r++)
     for(let c=0;c<SIZE;c++){
       const el = G.cells[r][c];
       el.style.background = `var(--pet-${G.board[r][c].id})`;
       el.querySelector('img').src = TW(G.board[r][c].cp);
+      el.classList.remove('cell-clock');
       applySpecialClass(el, null);
       el.classList.add('entering');
       setTimeout(()=>el.classList.remove('entering'),500);
     }
   await sleep(500);
+
+  // 5초 보너스 (남은 시간이 5초 초과일 때만 — 라스트 팡 보너스 영역과 충돌 방지)
+  if(G.timeLeft > 5) addTimeBonus(5);
+
   G.busy = false;
   scheduleHint();
 }
