@@ -311,6 +311,64 @@ body{font-family:'Fredoka',system-ui,sans-serif;background:#FFF0F7;background:va
 .dex-card-hint{font-size:10px;color:var(--muted);margin-top:4px;line-height:1.3;min-height:26px}
 .dex-equipped-badge{position:absolute;top:6px;right:6px;font-size:9px;font-weight:700;
   color:var(--white);background:var(--pink);padding:2px 7px;border-radius:8px;letter-spacing:.5px}
+.dex-note{font-size:12px;color:var(--muted);background:rgba(255,123,172,.08);
+  border-left:3px solid var(--pink-lt);padding:8px 12px;border-radius:8px;
+  margin-bottom:14px;line-height:1.5}
+
+#howto-screen{padding:20px}
+#howto-scroll{overflow-y:auto;max-height:calc(100svh - 100px);
+  display:flex;flex-direction:column;gap:14px;padding-bottom:8px}
+.ht-sec{background:var(--white);border:2px solid var(--pink-lt);
+  border-radius:18px;padding:14px 16px}
+.ht-sec.ht-daily-sec{
+  background:linear-gradient(135deg,#FFF8E5 0%,#FFF0F7 100%);
+  border-color:#FFD700}
+.ht-h{font-size:16px;font-weight:700;color:var(--purple);margin-bottom:8px;letter-spacing:.2px}
+.ht-p{font-size:13px;color:var(--purple);line-height:1.55;margin-bottom:6px}
+.ht-p:last-child{margin-bottom:0}
+.ht-p.ht-muted{color:var(--muted);font-size:12px}
+.ht-p strong{color:var(--pink);font-weight:700}
+.ht-list{font-size:13px;color:var(--purple);line-height:1.7;padding-left:20px;margin:6px 0}
+.ht-list li{margin-bottom:2px}
+.ht-list strong{color:var(--pink)}
+.ht-hero-line{font-size:17px;font-weight:700;color:var(--purple);
+  text-align:center;padding:12px 10px;margin:6px 0 12px;
+  background:linear-gradient(135deg,#FFE680,#FFD3DA,#DAD0F0);
+  border-radius:12px;letter-spacing:.5px;
+  box-shadow:0 2px 8px rgba(255,215,0,.2)}
+
+.ht-special-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.ht-special-card{background:var(--pink-bg);border-radius:14px;
+  padding:10px 6px;text-align:center}
+.ht-mini-label{font-size:9px;font-weight:700;color:var(--muted);
+  letter-spacing:.8px;margin-bottom:6px}
+.ht-special-demo{width:46px;height:46px;border-radius:11px;
+  margin:0 auto 6px;display:flex;align-items:center;justify-content:center;
+  font-size:22px;border:2px solid rgba(255,255,255,.5)}
+.ht-special-name{font-size:12px;font-weight:700;color:var(--purple);line-height:1.2}
+.ht-special-effect{font-size:10px;color:var(--muted);margin-top:3px;line-height:1.3;padding:0 2px}
+
+.cell-striped-h-demo{
+  background:repeating-linear-gradient(0deg,#52D9A0 0,#52D9A0 4px,#FFFFFF 4px,#FFFFFF 7px);
+  box-shadow:0 0 8px rgba(82,217,160,.5)}
+.cell-striped-v-demo{
+  background:repeating-linear-gradient(90deg,#7BC8F6 0,#7BC8F6 4px,#FFFFFF 4px,#FFFFFF 7px);
+  box-shadow:0 0 8px rgba(123,200,246,.5)}
+.cell-rainbow-demo{
+  background:linear-gradient(135deg,#FF7BAC,#FFD700,#52D9A0,#7BC8F6,#C3B1E1);
+  background-size:200% 200%;animation:rainbowSlide 2s infinite linear}
+.cell-bomb-demo{
+  background:radial-gradient(circle,#FFF5BA,#FFD700);
+  box-shadow:0 0 10px rgba(255,215,0,.5)}
+
+.ht-combo{display:flex;align-items:center;gap:6px;
+  background:var(--pink-bg);padding:8px 10px;border-radius:10px;margin-bottom:6px}
+.ht-combo:last-child{margin-bottom:0}
+.ht-combo-mini{width:24px;height:24px;border-radius:7px;flex-shrink:0;
+  border:1px solid rgba(255,255,255,.5)}
+.ht-combo-op{font-size:13px;font-weight:700;color:var(--muted);flex-shrink:0}
+.ht-combo-arrow{font-size:13px;color:var(--pink);flex-shrink:0;font-weight:700}
+.ht-combo-result{font-size:11px;font-weight:600;color:var(--purple);flex:1;line-height:1.3}
 .overlay{position:fixed;inset:0;background:rgba(45,27,78,.45);display:flex;align-items:center;
   justify-content:center;z-index:100;padding:24px;backdrop-filter:blur(4px)}
 .overlay.hidden{display:none}
@@ -422,7 +480,7 @@ body{font-family:'Fredoka',system-ui,sans-serif;background:#FFF0F7;background:va
           <div class="daily-card-streak" id="daily-streak">🔥 0 day streak</div>
         </div>
         <div class="daily-card-body" id="daily-body">
-          Same board for everyone today.<br>One shot per day.
+          Same board for everyone today.<br>One shot · Pure skill 🏆
         </div>
         <button class="daily-card-btn" id="daily-btn">PLAY DAILY →</button>
       </div>
@@ -431,6 +489,7 @@ body{font-family:'Fredoka',system-ui,sans-serif;background:#FFF0F7;background:va
     <button class="btn btn-pink"  id="play-btn">🎮 Free Play</button>
     <button class="btn btn-sky"   id="lb-btn">🏆 Leaderboard</button>
     <button class="btn btn-ghost" id="dex-btn">📚 Pet Dex</button>
+    <button class="btn btn-ghost" id="howto-btn">❓ How to Play</button>
   </div>
 
   <div class="screen" id="game-screen">
@@ -493,7 +552,147 @@ body{font-family:'Fredoka',system-ui,sans-serif;background:#FFF0F7;background:va
       <div class="lb-title">📚 Pet Dex</div>
     </div>
     <div class="dex-stats" id="dex-stats">0 / 19 discovered</div>
+    <div class="dex-note">Pets are currently avatar cosmetics — tap to equip your favorite. Powers coming in a future update!</div>
     <div id="dex-list"></div>
+  </div>
+
+  <div class="screen" id="howto-screen">
+    <div class="lb-header">
+      <button class="lb-back" id="howto-back">←</button>
+      <div class="lb-title">❓ How to Play</div>
+    </div>
+    <div id="howto-scroll">
+
+      <section class="ht-sec">
+        <h3 class="ht-h">🎮 Basics</h3>
+        <p class="ht-p">Tap two adjacent pets to swap them. Match <strong>3 or more</strong> in a row or column to pop them and score points.</p>
+        <p class="ht-p">When pets pop, others fall down to fill the gaps — chain matches together for big <strong>combo bonuses</strong>!</p>
+      </section>
+
+      <section class="ht-sec">
+        <h3 class="ht-h">⭐ Special Blocks</h3>
+        <p class="ht-p">Bigger matches create powerful blocks!</p>
+        <div class="ht-special-grid">
+          <div class="ht-special-card">
+            <div class="ht-mini-label">MATCH 4 →</div>
+            <div class="ht-special-demo cell-striped-h-demo"></div>
+            <div class="ht-special-name">Horizontal Stripe</div>
+            <div class="ht-special-effect">Clears the row when matched</div>
+          </div>
+          <div class="ht-special-card">
+            <div class="ht-mini-label">MATCH 4 ↓</div>
+            <div class="ht-special-demo cell-striped-v-demo"></div>
+            <div class="ht-special-name">Vertical Stripe</div>
+            <div class="ht-special-effect">Clears the column when matched</div>
+          </div>
+          <div class="ht-special-card">
+            <div class="ht-mini-label">MATCH 5</div>
+            <div class="ht-special-demo cell-rainbow-demo"></div>
+            <div class="ht-special-name">Rainbow</div>
+            <div class="ht-special-effect">Swap with any pet to clear all of that color</div>
+          </div>
+          <div class="ht-special-card">
+            <div class="ht-mini-label">CASCADE BONUS</div>
+            <div class="ht-special-demo cell-bomb-demo">💣</div>
+            <div class="ht-special-name">Bomb</div>
+            <div class="ht-special-effect">3×3 explosion when triggered</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ht-sec">
+        <h3 class="ht-h">💥 Special Combos</h3>
+        <p class="ht-p">Place two special blocks next to each other and swap them — they unleash massive effects:</p>
+        <div class="ht-combo">
+          <div class="ht-combo-mini cell-bomb-demo"></div>
+          <span class="ht-combo-op">+</span>
+          <div class="ht-combo-mini cell-bomb-demo"></div>
+          <span class="ht-combo-arrow">→</span>
+          <div class="ht-combo-result">5×5 mega explosion</div>
+        </div>
+        <div class="ht-combo">
+          <div class="ht-combo-mini cell-bomb-demo"></div>
+          <span class="ht-combo-op">+</span>
+          <div class="ht-combo-mini cell-rainbow-demo"></div>
+          <span class="ht-combo-arrow">→</span>
+          <div class="ht-combo-result">All of one color → bombs → BOOM</div>
+        </div>
+        <div class="ht-combo">
+          <div class="ht-combo-mini cell-rainbow-demo"></div>
+          <span class="ht-combo-op">+</span>
+          <div class="ht-combo-mini cell-rainbow-demo"></div>
+          <span class="ht-combo-arrow">→</span>
+          <div class="ht-combo-result">Clear the entire board 🌈</div>
+        </div>
+        <div class="ht-combo">
+          <div class="ht-combo-mini cell-striped-h-demo"></div>
+          <span class="ht-combo-op">+</span>
+          <div class="ht-combo-mini cell-striped-v-demo"></div>
+          <span class="ht-combo-arrow">→</span>
+          <div class="ht-combo-result">Cross clear: row + column</div>
+        </div>
+        <div class="ht-combo">
+          <div class="ht-combo-mini cell-bomb-demo"></div>
+          <span class="ht-combo-op">+</span>
+          <div class="ht-combo-mini cell-striped-h-demo"></div>
+          <span class="ht-combo-arrow">→</span>
+          <div class="ht-combo-result">3 rows + 3 columns mega cross</div>
+        </div>
+        <div class="ht-combo">
+          <div class="ht-combo-mini cell-rainbow-demo"></div>
+          <span class="ht-combo-op">+</span>
+          <div class="ht-combo-mini cell-striped-h-demo"></div>
+          <span class="ht-combo-arrow">→</span>
+          <div class="ht-combo-result">Color → stripes → chain reaction</div>
+        </div>
+      </section>
+
+      <section class="ht-sec">
+        <h3 class="ht-h">⏰ Clock Pet</h3>
+        <p class="ht-p">After 20 seconds, golden clock pets start dropping onto the board. Match <strong>3 clocks</strong> in a row to gain <strong>+3 seconds</strong> per clock cleared.</p>
+        <p class="ht-p ht-muted">Clocks tend to land near each other — keep an eye out and snag them before time runs low!</p>
+      </section>
+
+      <section class="ht-sec">
+        <h3 class="ht-h">🔥 Combos & FEVER</h3>
+        <p class="ht-p">Each cascading match builds your combo count. The higher the combo, the bigger the score multiplier.</p>
+        <p class="ht-p">Hit <strong>5+ combo</strong> in a single chain to trigger <strong>FEVER mode</strong> with extra effects!</p>
+      </section>
+
+      <section class="ht-sec">
+        <h3 class="ht-h">✨ Last Pop Bonus</h3>
+        <p class="ht-p">Any match made in the <strong>final 2 seconds</strong> earns a <strong>2× score bonus</strong>. Save your biggest plays for the end!</p>
+      </section>
+
+      <section class="ht-sec">
+        <h3 class="ht-h">🔄 Auto Shuffle</h3>
+        <p class="ht-p">If no matches are possible, the board automatically reshuffles itself and you get a bonus <strong>+5 seconds</strong>. Stuck boards become opportunities!</p>
+      </section>
+
+      <section class="ht-sec ht-daily-sec">
+        <h3 class="ht-h">🌟 Daily Challenge</h3>
+        <p class="ht-hero-line">Same Board · One Shot · Pure Skill</p>
+        <p class="ht-p">Every day at <strong>midnight ET</strong>, a new puzzle appears — and <strong>everyone gets the exact same board</strong>. No luck, no random advantage. Just you vs. every other player on the same starting position.</p>
+        <ul class="ht-list">
+          <li><strong>One attempt</strong> per day per player</li>
+          <li>🔥 <strong>Streak</strong> counts how many days in a row you've played — wear it on the leaderboard</li>
+          <li>Miss a day and your streak resets to 0 — don't break the chain!</li>
+          <li>The Today tab on the leaderboard shows only today's daily plays</li>
+        </ul>
+      </section>
+
+      <section class="ht-sec">
+        <h3 class="ht-h">📚 Pet Dex</h3>
+        <p class="ht-p">Unlock new pets by:</p>
+        <ul class="ht-list">
+          <li>Reaching cumulative score milestones (5k, 12k, 25k, ...)</li>
+          <li>Completing missions (max combo, last pop streaks, etc.)</li>
+        </ul>
+        <p class="ht-p ht-muted">Pets are currently avatar-style cosmetics — tap one in the Dex to equip it on your profile. Powers coming in a future update!</p>
+      </section>
+
+      <button class="btn btn-pink" id="howto-close">Got it! Let's play 🐾</button>
+    </div>
   </div>
 
 </div>
@@ -899,7 +1098,7 @@ function renderDailyCard(){
     card.classList.remove('done');
     btn.disabled = false;
     btn.textContent = 'PLAY DAILY →';
-    body.innerHTML = `Same board for everyone today.<br>One shot per day.`;
+    body.innerHTML = `Same board for everyone today.<br>One shot · Pure skill 🏆`;
   }
 }
 
@@ -2021,6 +2220,12 @@ document.querySelectorAll('.lb-tab').forEach(tab => {
 });
 document.getElementById('dex-btn').addEventListener('click', () => { show('dex-screen'); renderDex(); });
 document.getElementById('dex-back').addEventListener('click', () => { show('home-screen'); renderHome(); });
+document.getElementById('howto-btn').addEventListener('click', () => {
+  show('howto-screen');
+  document.getElementById('howto-scroll').scrollTop = 0;
+});
+document.getElementById('howto-back').addEventListener('click', () => { show('home-screen'); renderHome(); });
+document.getElementById('howto-close').addEventListener('click', () => { show('home-screen'); renderHome(); });
 
 function renderDex(){
   const stats = document.getElementById('dex-stats');
