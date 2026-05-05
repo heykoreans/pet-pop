@@ -4,11 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>PET POP 🐾</title>
-<meta property="og:title"       content="PET POP 🐾">
-<meta property="og:description" content="60 seconds. Match cute pets. Beat the high score.">
-<meta property="og:image"       content="https://petpop.mybumo.com/og.png">
-<meta property="og:url"         content="https://petpop.mybumo.com">
-<meta name="twitter:card"       content="summary_large_image">
+<meta property="og:title"           content="PET POP 🐾">
+<meta property="og:description"     content="60 seconds. Match cute pets. Beat the high score.">
+<meta property="og:image"           content="https://petpop.mybumo.com/og.png">
+<meta property="og:image:width"     content="1200">
+<meta property="og:image:height"    content="630">
+<meta property="og:image:alt"       content="PET POP — 60-second match-3 puzzle game with cute pets">
+<meta property="og:url"             content="https://petpop.mybumo.com">
+<meta property="og:type"            content="website">
+<meta property="og:site_name"       content="PET POP">
+<meta name="twitter:card"           content="summary_large_image">
+<meta name="twitter:title"          content="PET POP 🐾">
+<meta name="twitter:description"    content="60 seconds. Match cute pets. Beat the high score.">
+<meta name="twitter:image"          content="https://petpop.mybumo.com/og.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -451,7 +459,7 @@ body{font-family:'Fredoka',system-ui,sans-serif;background:#FFF0F7;background:va
 <script>
 'use strict';
 const SUPABASE_URL  = 'https://tlpzztuxttsobhqprosk.supabase.co';
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRscHp6dHV4dHRzb2JocXByb3NrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2Mzg2NDQsImV4cCI6MjA5MzIxNDY0NH0.gMP2SO2NCnbWbknHMObs11Z8vWH3Wa6_3bAGobV9_GU';
+const SUPABASE_ANON = 'YOUR_ANON_KEY_HERE';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 const TW = cp => `https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/${cp}.svg`;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -1502,7 +1510,7 @@ const loadLabel = document.getElementById('loading-label');
 const cycle = setInterval(() => { loadEmoji.textContent = LOAD_PETS[li++ % LOAD_PETS.length]; }, 180);
 
 (async () => {
-  if(SUPABASE_ANON === 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRscHp6dHV4dHRzb2JocXByb3NrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2Mzg2NDQsImV4cCI6MjA5MzIxNDY0NH0.gMP2SO2NCnbWbknHMObs11Z8vWH3Wa6_3bAGobV9_GU' || !SUPABASE_ANON){
+  if(SUPABASE_ANON === 'YOUR_ANON_KEY_HERE' || !SUPABASE_ANON){
     clearInterval(cycle);
     loadEmoji.textContent = '⚠️';
     loadLabel.innerHTML = 'Set <strong>SUPABASE_ANON</strong> in index.html<br>with your anon public key';
