@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>PET POP 🐾</title>
-<meta property="og:title"           content="PET POP 🐾">
-<meta property="og:description"     content="60 seconds. Match cute pets. Beat the high score.">
+<meta property="og:title"           content="PET POP — Cute Match-3 Puzzle Game in 60 Seconds 🐾">
+<meta property="og:description"     content="Match 3+ adorable pets, chain combos for big scores, and climb the leaderboard in this 60-second kawaii puzzle game. No signup hassle — just play and pop!">
 <meta property="og:image"           content="https://petpop.mybumo.com/og.png">
 <meta property="og:image:width"     content="1200">
 <meta property="og:image:height"    content="630">
@@ -14,8 +14,8 @@
 <meta property="og:type"            content="website">
 <meta property="og:site_name"       content="PET POP">
 <meta name="twitter:card"           content="summary_large_image">
-<meta name="twitter:title"          content="PET POP 🐾">
-<meta name="twitter:description"    content="60 seconds. Match cute pets. Beat the high score.">
+<meta name="twitter:title"          content="PET POP — Cute Match-3 Puzzle Game in 60 Seconds 🐾">
+<meta name="twitter:description"    content="Match 3+ adorable pets, chain combos for big scores, and climb the leaderboard in this 60-second kawaii puzzle game. No signup hassle — just play and pop!">
 <meta name="twitter:image"          content="https://petpop.mybumo.com/og.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1130,9 +1130,11 @@ async function cascade(){
     }
 
     const bombsToTrigger = [];
+    const rainbowsToTrigger = [];
     for(const k of toClear){
       const [r,c] = k.split(',').map(Number);
       if(G.board[r][c]?.special === 'bomb') bombsToTrigger.push([r,c]);
+      if(G.board[r][c]?.special === 'rainbow') rainbowsToTrigger.push([r,c]);
     }
     for(const [br,bc] of bombsToTrigger){
       for(let dr=-1;dr<=1;dr++)
@@ -1141,6 +1143,16 @@ async function cascade(){
           if(nr>=0&&nr<SIZE&&nc>=0&&nc<SIZE && G.board[nr][nc]) toClear.add(`${nr},${nc}`);
         }
       spawnBombParticles(br, bc);
+    }
+    // 무지개가 매치에 잡혔을 때: 해당 색 전체 제거 + 무지개 파티클
+    for(const [rr,rc] of rainbowsToTrigger){
+      const targetId = G.board[rr][rc].id;
+      for(let r2=0;r2<SIZE;r2++)
+        for(let c2=0;c2<SIZE;c2++)
+          if(G.board[r2][c2]?.id === targetId && !G.board[r2][c2]?.special)
+            toClear.add(`${r2},${c2}`);
+      spawnRainbowParticles(rr, rc);
+      SFX.combo();
     }
 
     await clearCells(toClear);
