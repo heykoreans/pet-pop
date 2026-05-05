@@ -135,9 +135,9 @@ body{font-family:'Fredoka',system-ui,sans-serif;background:#FFF0F7;background:va
 #timer-wrap.urgent #timer-text{color:#E53E3E;animation:pulse .6s infinite}
 @keyframes pulse{50%{transform:scale(1.1)}}
 #board-frame{flex:1;display:flex;align-items:flex-start;justify-content:center;
-  padding:14px 6px 12px;position:relative}
+  padding:14px 4px 12px;position:relative}
 #board-stage{position:relative;background:linear-gradient(160deg,#FFFAFC 0%,#F8F0FF 100%);
-  border-radius:22px;padding:6px;
+  border-radius:22px;padding:5px;
   box-shadow:inset 0 2px 8px rgba(195,177,225,.25),0 6px 0 rgba(255,123,172,.18),
     0 12px 24px rgba(45,27,78,.12);border:2px solid var(--pink-lt)}
 #board-stage::before{content:'';position:absolute;top:-12px;left:18px;right:18px;height:8px;
@@ -843,16 +843,10 @@ body{font-family:'Fredoka',system-ui,sans-serif;background:#FFF0F7;background:va
 <script>
 'use strict';
 
-// ===== iOS Safari 줌 차단 (viewport meta 무시당하는 케이스) =====
+// ===== iOS Safari 핀치 줌 차단 (더블탭 줌은 CSS touch-action: manipulation이 처리) =====
 document.addEventListener('gesturestart', e => e.preventDefault(), { passive: false });
 document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });
 document.addEventListener('gestureend', e => e.preventDefault(), { passive: false });
-let _lastTouchEnd = 0;
-document.addEventListener('touchend', e => {
-  const now = Date.now();
-  if(now - _lastTouchEnd <= 350) e.preventDefault();
-  _lastTouchEnd = now;
-}, { passive: false });
 
 const SUPABASE_URL  = 'https://tlpzztuxttsobhqprosk.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRscHp6dHV4dHRzb2JocXByb3NrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2Mzg2NDQsImV4cCI6MjA5MzIxNDY0NH0.gMP2SO2NCnbWbknHMObs11Z8vWH3Wa6_3bAGobV9_GU';
@@ -1463,8 +1457,8 @@ function setBoardLayout(){
   // viewport 기반 직접 계산 (DOM 측정 타이밍 이슈 방지)
   const appW = Math.min(window.innerWidth, 460);
   const appH = window.innerHeight;
-  // 가로: board-frame padding 6px*2 + board-stage padding 6px*2 + border 2px*2 = 28px
-  const wAvail = appW - 28;
+  // 가로: board-frame padding 4px*2 + board-stage padding 5px*2 + border 2px*2 = 22px
+  const wAvail = appW - 22;
   // 세로: header ~80 + time-bar+margin ~22 + board-frame padding 26 + iOS safe area ~20
   const verticalChrome = 80 + 22 + 26 + 20;
   const hAvail = appH - verticalChrome;
