@@ -22,7 +22,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
+*{box-sizing:border-box;margin:0;padding:0;touch-action:manipulation}
 :root{
   --pink:#FF7BAC; --pink-lt:#FFD6E8; --pink-bg:#FFF0F7;
   --mint:#52D9A0; --sky:#7BC8F6; --yellow:#FFD700;
@@ -279,13 +279,22 @@ body{font-family:'Fredoka',system-ui,sans-serif;background:#FFF0F7;background:va
   20%{transform:translateY(-10px) scale(1.2);opacity:1}
   100%{transform:translateY(-50px) scale(.8);opacity:0}}
 #lb-screen{padding:20px}
-.lb-header{display:flex;align-items:center;gap:12px;margin-bottom:20px;
+.lb-header{display:flex;align-items:center;gap:12px;margin-bottom:16px;
   padding-bottom:16px;border-bottom:2px solid var(--pink-lt)}
 .lb-back{background:none;border:none;font-size:22px;cursor:pointer;padding:4px;color:var(--pink)}
 .lb-title{font-size:22px;font-weight:700}
-.lb-tabs{display:flex;gap:8px;margin-bottom:16px}
-.lb-tab{flex:1;padding:8px;background:transparent;border:2px solid var(--pink-lt);
-  border-radius:10px;font-family:inherit;font-size:13px;font-weight:600;color:var(--muted);
+/* Mode tabs (top level) */
+.lb-mode-tabs{display:flex;gap:8px;margin-bottom:10px}
+.lb-mode-tab{flex:1;padding:11px 8px;background:transparent;border:2px solid var(--pink-lt);
+  border-radius:14px;font-family:inherit;font-size:14px;font-weight:700;color:var(--muted);
+  cursor:pointer;transition:all .15s}
+.lb-mode-tab.active{background:linear-gradient(135deg,var(--pink),var(--lavender));
+  color:var(--white);border-color:transparent;
+  box-shadow:0 4px 14px rgba(255,123,172,.35)}
+/* Range sub-tabs (under Challenge) */
+.lb-tabs{display:flex;gap:6px;margin-bottom:14px}
+.lb-tab{flex:1;padding:7px 4px;background:transparent;border:2px solid var(--pink-lt);
+  border-radius:10px;font-family:inherit;font-size:12px;font-weight:600;color:var(--muted);
   cursor:pointer;transition:all .15s}
 .lb-tab.active{background:var(--pink);color:var(--white);border-color:var(--pink)}
 #lb-list{overflow-y:auto;max-height:calc(100svh - 220px);display:flex;flex-direction:column;gap:8px}
@@ -591,10 +600,16 @@ body{font-family:'Fredoka',system-ui,sans-serif;background:#FFF0F7;background:va
       <button class="lb-back" id="lb-back">←</button>
       <div class="lb-title">🏆 Leaderboard</div>
     </div>
-    <div class="lb-tabs">
-      <button class="lb-tab active" data-range="alltime">All-Time</button>
+    <!-- Mode tabs -->
+    <div class="lb-mode-tabs">
+      <button class="lb-mode-tab active" data-mode="challenge">🌟 Challenge</button>
+      <button class="lb-mode-tab" data-mode="free">🎮 Free Play</button>
+    </div>
+    <!-- Range sub-tabs (Challenge only) -->
+    <div class="lb-tabs" id="lb-range-tabs">
+      <button class="lb-tab active" data-range="daily">Today</button>
       <button class="lb-tab" data-range="weekly">This Week</button>
-      <button class="lb-tab" data-range="daily">Today</button>
+      <button class="lb-tab" data-range="alltime">All-Time</button>
     </div>
     <div id="lb-list"><div class="lb-empty">Loading...</div></div>
   </div>
@@ -849,6 +864,8 @@ body{font-family:'Fredoka',system-ui,sans-serif;background:#FFF0F7;background:va
 document.addEventListener('gesturestart', e => e.preventDefault(), { passive: false });
 document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });
 document.addEventListener('gestureend', e => e.preventDefault(), { passive: false });
+// iOS 17+ user-scalable=no 무시 대비 안전장치 — dblclick 자체를 차단
+document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
 
 const SUPABASE_URL  = 'https://tlpzztuxttsobhqprosk.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRscHp6dHV4dHRzb2JocXByb3NrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2Mzg2NDQsImV4cCI6MjA5MzIxNDY0NH0.gMP2SO2NCnbWbknHMObs11Z8vWH3Wa6_3bAGobV9_GU';
@@ -1070,42 +1087,84 @@ document.getElementById('sound-toggle').addEventListener('click', e => {
 });
 document.getElementById('sound-toggle').textContent = soundOn ? '🔊' : '🔇';
 
-let lbRange = 'alltime';
+let lbRange = 'daily';
+let lbMode  = 'challenge';
+
+// ET-aware date helpers for leaderboard windows
+function etDateStartUTC(dateStr){
+  // dateStr: 'YYYY-MM-DD' (ET date) → approximate UTC ISO at ET midnight
+  // ET is UTC-5 (EST) or UTC-4 (EDT); 5h is a safe lower bound so we don't miss scores
+  return dateStr + 'T05:00:00Z';
+}
+function weekStartDateStr(){
+  const today = dailyDateStr();
+  const d = new Date(today + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() - 6);
+  return d.toISOString().slice(0,10);
+}
+
 async function loadLeaderboard(){
   const listEl = document.getElementById('lb-list');
   listEl.innerHTML = '<div class="lb-empty">Loading...</div>';
   let rows = null;
-  if(lbRange === 'alltime'){
-    const {data,error} = await db.from('petpop_players')
-      .select('callsign,best_score,grade,unlocked_pets,current_streak')
-      .order('best_score',{ascending:false}).limit(100);
-    if(error){ listEl.innerHTML = '<div class="lb-empty">Failed to load</div>'; return; }
-    rows = (data||[]).map(p => ({
-      callsign:p.callsign, score:p.best_score, grade:p.grade,
-      unlocked_pets:p.unlocked_pets, streak:p.current_streak
-    }));
-  } else {
-    const today = dailyDateStr();
-    let fromDate = today;
-    if(lbRange === 'weekly'){
-      const d = new Date(today + 'T12:00:00Z');
-      d.setUTCDate(d.getUTCDate() - 6);
-      fromDate = d.toISOString().slice(0,10);
+
+  const today = dailyDateStr();
+  const targetMode = lbMode === 'free' ? 'free' : 'daily';
+
+  // Build query
+  let query = db.from('petpop_sessions')
+    .select('score, created_at, daily_date, players:player_id(callsign,grade,unlocked_pets,current_streak)')
+    .eq('mode', targetMode)
+    .order('score', {ascending:false})
+    .limit(300);
+
+  // Date range filter
+  if(lbRange === 'daily'){
+    if(targetMode === 'daily'){
+      query = query.eq('daily_date', today);
+    } else {
+      query = query.gte('created_at', etDateStartUTC(today));
     }
-    const {data,error} = await db.from('petpop_sessions')
-      .select('score, max_combo, daily_date, players:player_id(callsign,grade,unlocked_pets,current_streak)')
-      .eq('mode','daily').gte('daily_date', fromDate).lte('daily_date', today)
-      .order('score',{ascending:false}).limit(100);
-    if(error){ listEl.innerHTML = '<div class="lb-empty">Failed to load</div>'; return; }
+  } else if(lbRange === 'weekly'){
+    const fromDate = weekStartDateStr();
+    if(targetMode === 'daily'){
+      query = query.gte('daily_date', fromDate).lte('daily_date', today);
+    } else {
+      query = query.gte('created_at', etDateStartUTC(fromDate));
+    }
+  }
+  // 'alltime' → no date filter
+
+  const {data, error} = await query;
+  if(error){ listEl.innerHTML = '<div class="lb-empty">Failed to load</div>'; return; }
+
+  // Daily-today: 1 play per player per day, no dedup needed
+  // All other ranges: dedup by callsign keeping highest score
+  const needsDedup = !(targetMode === 'daily' && lbRange === 'daily');
+  if(needsDedup){
+    const seen = new Set();
+    rows = [];
+    for(const s of (data||[])){
+      const cs = s.players?.callsign;
+      if(!cs || seen.has(cs)) continue;
+      seen.add(cs);
+      rows.push({
+        callsign:cs, score:s.score, grade:s.players?.grade,
+        unlocked_pets:s.players?.unlocked_pets, streak:s.players?.current_streak
+      });
+    }
+  } else {
     rows = (data||[]).map(s => ({
       callsign:s.players?.callsign || '?', score:s.score, grade:s.players?.grade,
       unlocked_pets:s.players?.unlocked_pets, streak:s.players?.current_streak
     }));
   }
+
   if(!rows || rows.length === 0){
-    const msg = lbRange === 'daily' ? "No daily plays yet today. Be first! 🐾"
-              : lbRange === 'weekly' ? "No daily plays this week yet 🐾"
-              : "No players yet 🐾";
+    const label = lbMode === 'free' ? 'free play' : "challenge";
+    const msg = lbRange === 'daily'   ? `No ${label} plays today yet. Be first! 🐾`
+              : lbRange === 'weekly'  ? `No ${label} plays this week yet 🐾`
+              :                          `No ${label} scores yet 🐾`;
     listEl.innerHTML = `<div class="lb-empty">${msg}</div>`;
     scheduleEmailModal();
     return;
@@ -1128,6 +1187,7 @@ async function loadLeaderboard(){
   }).join('');
   scheduleEmailModal();
 }
+
 
 function renderHome(){
   const equip = player.unlocked_pets?.equipped || 'dog';
@@ -2289,10 +2349,26 @@ document.getElementById('daily-btn').addEventListener('click', async () => {
   show('game-screen');
   await startGame('daily');
 });
-document.getElementById('lb-btn').addEventListener('click', () => { show('lb-screen'); loadLeaderboard(); });
+document.getElementById('lb-btn').addEventListener('click', () => {
+  // Reset to Challenge > Today on each open
+  lbMode = 'challenge'; lbRange = 'daily';
+  document.querySelectorAll('.lb-mode-tab').forEach(t => t.classList.remove('active'));
+  document.querySelector('.lb-mode-tab[data-mode="challenge"]').classList.add('active');
+  document.querySelectorAll('.lb-tab').forEach(t => t.classList.remove('active'));
+  document.querySelector('.lb-tab[data-range="daily"]').classList.add('active');
+  show('lb-screen'); loadLeaderboard();
+});
 document.getElementById('lb-back').addEventListener('click', () => {
   cancelEmailModalSchedule();
   show('home-screen');
+});
+document.querySelectorAll('.lb-mode-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.lb-mode-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    lbMode = tab.dataset.mode;
+    loadLeaderboard();
+  });
 });
 document.querySelectorAll('.lb-tab').forEach(tab => {
   tab.addEventListener('click', () => {
