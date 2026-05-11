@@ -1452,6 +1452,32 @@ function genBoard(){
   return b;
 }
 
+// 셔플 시 특수 아이템(폭탄/무지개/줄무늬) + 시계를 같은 위치에 보존하고 나머지만 새로 생성
+function genBoardWithPreserved(preserved){
+  const b = [];
+  for(let r=0;r<SIZE;r++) b[r] = new Array(SIZE).fill(null);
+  // 보존 셀 먼저 배치
+  for(const item of preserved){
+    b[item.r][item.c] = item.pet;
+  }
+  // 나머지는 3-in-a-row 제약 지키며 랜덤 생성
+  for(let r=0;r<SIZE;r++){
+    for(let c=0;c<SIZE;c++){
+      if(b[r][c]) continue;
+      let p, attempts = 0;
+      do {
+        p = rndPet();
+        attempts++;
+      } while(attempts < 50 && (
+        (c>=2 && b[r][c-1]?.id===p.id && b[r][c-2]?.id===p.id) ||
+        (r>=2 && b[r-1][c]?.id===p.id && b[r-2][c]?.id===p.id)
+      ));
+      b[r][c] = {...p, special:null};
+    }
+  }
+  return b;
+}
+
 function findMatches(){
   const set = new Set();
   const lines = [];
@@ -1601,8 +1627,7 @@ async function trySwap(r1, c1, r2, c2){
     await triggerSpecialCombo(r1, c1, r2, c2, a, b);
     G.combo = 0;
     document.getElementById('combo-disp').textContent = 0;
-    G.busy = false;
-    scheduleHint();
+    releaseBusy();
     return;
   }
 
@@ -1613,8 +1638,7 @@ async function trySwap(r1, c1, r2, c2){
     await cascade();
     G.combo = 0;
     document.getElementById('combo-disp').textContent = 0;
-    G.busy = false;
-    scheduleHint();
+    releaseBusy();
     return;
   }
 
@@ -1631,14 +1655,12 @@ async function trySwap(r1, c1, r2, c2){
     G.cells[r1][c1].classList.remove('shake');
     G.cells[r2][c2].classList.remove('shake');
     await sleep(280);
-    G.busy = false;
-    scheduleHint();
+    releaseBusy();
     return;
   }
   G.combo = 0;
   await cascade();
-  G.busy = false;
-  scheduleHint();
+  releaseBusy();
 }
 
 async function triggerRainbow(pos, targetId){
@@ -2187,6 +2209,18 @@ function resetHint(){
 async function reshuffleBoard(){
   G.busy = true;
 
+  // 기존 보드의 특수 아이템(폭탄/무지개/줄무늬) + 시계 펫 위치 보존
+  const preserved = [];
+  for(let r=0;r<SIZE;r++){
+    for(let c=0;c<SIZE;c++){
+      const cell = G.board[r][c];
+      if(!cell) continue;
+      if(cell.special || cell.id === 'clock'){
+        preserved.push({r, c, pet: {...cell}});
+      }
+    }
+  }
+
   // 배너 등장
   const banner = document.getElementById('shuffle-banner');
   banner.classList.remove('show'); void banner.offsetWidth; banner.classList.add('show');
@@ -2199,14 +2233,19 @@ async function reshuffleBoard(){
 
   await sleep(700);
 
-  G.board = genBoard();
+  G.board = genBoardWithPreserved(preserved);
+  // 새 보드에서도 매치 가능한지 확인, 없으면 한 번 재시도
+  if(!findHint()) G.board = genBoardWithPreserved(preserved);
+
   for(let r=0;r<SIZE;r++)
     for(let c=0;c<SIZE;c++){
+      const cell = G.board[r][c];
       const el = G.cells[r][c];
-      el.style.background = `var(--pet-${G.board[r][c].id})`;
-      el.querySelector('img').src = TW(G.board[r][c].cp);
+      el.style.background = `var(--pet-${cell.id})`;
+      el.querySelector('img').src = TW(cell.cp);
       el.classList.remove('cell-clock');
-      applySpecialClass(el, null);
+      if(cell.id === 'clock') el.classList.add('cell-clock');
+      applySpecialClass(el, cell.special || null);
       el.classList.add('entering');
       setTimeout(()=>el.classList.remove('entering'),500);
     }
@@ -2226,6 +2265,7 @@ async function startGame(mode='free'){
   G.sel = null; G.combo = 0; G.maxCombo = 0;
   G.score = 0; G.timeLeft = 60; G.petsMatched = {};
   G.lastPop = false; G.feverActive = false;
+  G.timeUp = false; G.ended = false;
 
   if(mode === 'daily') setDailyRng();
   else setFreeRng();
@@ -2265,6 +2305,20 @@ async function runCountdown(){
   ov.classList.add('hidden');
 }
 
+// 캐스케이드 진행 중 시간이 끝나면, 캐스케이드가 다 끝난 뒤에 endGame을 호출하도록
+// 모든 busy 해제 지점에서 이 헬퍼를 사용한다.
+function releaseBusy(){
+  if(G.timeUp){
+    if(!G.ended){
+      G.ended = true;
+      endGame(); // endGame이 G.busy=true, G.active=false 처리
+    }
+    return;
+  }
+  G.busy = false;
+  scheduleHint();
+}
+
 function startTimer(){
   const arc = document.getElementById('timer-arc');
   const txt = document.getElementById('timer-text');
@@ -2279,12 +2333,22 @@ function startTimer(){
     if(G.timeLeft <= 20 && G.timeLeft > 8) bar.classList.add('warning');
     if(G.timeLeft <= 8){ bar.classList.remove('warning'); bar.classList.add('urgent'); }
     if(G.timeLeft <= 5) wrap.classList.add('urgent');
-    if(G.timeLeft <= 0){ clearInterval(G.timerInterval); endGame(); }
+    if(G.timeLeft <= 0){
+      clearInterval(G.timerInterval);
+      G.timeUp = true;
+      // 진행 중인 캐스케이드가 없을 때만 즉시 종료, 있으면 캐스케이드 완료 후 자동 종료
+      if(!G.busy && !G.ended){
+        G.ended = true;
+        endGame();
+      }
+    }
   }, 1000);
 }
 
 async function endGame(){
+  if(G.active === false && G.score === 0) return; // 가드: 시작도 안 했는데 호출되는 경우
   G.active = false; G.busy = true;
+  G.ended = true; // releaseBusy/startTimer 양쪽 모두에서 중복 호출 방지
   clearInterval(G.timerInterval);
   resetHint();
   stopBGM();
