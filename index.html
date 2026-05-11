@@ -1765,12 +1765,11 @@ async function cascade(){
       }
     }
 
-    // 트리거 처리: 폭탄, 줄무늬, 무지개, 시계
+    // 트리거 처리: 폭탄, 줄무늬, 무지개
     const bombsToTrigger = [];
     const stripedHs = [];
     const stripedVs = [];
     const rainbowsToTrigger = [];
-    let clocksMatched = 0;
     for(const k of toClear){
       const [r,c] = k.split(',').map(Number);
       const cell = G.board[r][c];
@@ -1779,7 +1778,6 @@ async function cascade(){
       if(cell.special === 'striped-h') stripedHs.push([r,c]);
       if(cell.special === 'striped-v') stripedVs.push([r,c]);
       if(cell.special === 'rainbow') rainbowsToTrigger.push([r,c]);
-      if(cell.id === 'clock') clocksMatched++;
     }
     for(const [br,bc] of bombsToTrigger){
       for(let dr=-1;dr<=1;dr++)
@@ -1805,6 +1803,13 @@ async function cascade(){
             toClear.add(`${r2},${c2}`);
       spawnRainbowParticles(rr, rc);
       SFX.combo();
+    }
+
+    // 시계 카운트: stripe/bomb/rainbow 확장으로 추가된 영역까지 모두 포함해서 한 번에 카운트
+    let clocksMatched = 0;
+    for(const k of toClear){
+      const [r,c] = k.split(',').map(Number);
+      if(G.board[r][c]?.id === 'clock') clocksMatched++;
     }
 
     await clearCells(toClear);
@@ -2251,11 +2256,11 @@ async function reshuffleBoard(){
     }
   await sleep(500);
 
-  // 5초 보너스 (남은 시간이 5초 초과일 때만 — 라스트 팡 보너스 영역과 충돌 방지)
-  if(G.timeLeft > 5) addTimeBonus(5);
+  // 5초 보너스 — 셔플은 플레이어 손해(매치할 수 없음 + 1.2초 소요)이므로 항상 보상
+  // 단, 시간이 이미 0이 된 경우엔 부활시키지 않음
+  if(!G.timeUp) addTimeBonus(5);
 
-  G.busy = false;
-  scheduleHint();
+  releaseBusy();
 }
 
 async function startGame(mode='free'){
