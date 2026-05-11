@@ -1090,12 +1090,6 @@ document.getElementById('sound-toggle').textContent = soundOn ? '🔊' : '🔇';
 let lbRange = 'daily';
 let lbMode  = 'challenge';
 
-// ET-aware date helpers for leaderboard windows
-function etDateStartUTC(dateStr){
-  // dateStr: 'YYYY-MM-DD' (ET date) → approximate UTC ISO at ET midnight
-  // ET is UTC-5 (EST) or UTC-4 (EDT); 5h is a safe lower bound so we don't miss scores
-  return dateStr + 'T05:00:00Z';
-}
 function weekStartDateStr(){
   const today = dailyDateStr();
   const d = new Date(today + 'T12:00:00Z');
@@ -1113,25 +1107,17 @@ async function loadLeaderboard(){
 
   // Build query
   let query = db.from('petpop_sessions')
-    .select('score, created_at, daily_date, players:player_id(callsign,grade,unlocked_pets,current_streak)')
+    .select('score, daily_date, players:player_id(callsign,grade,unlocked_pets,current_streak)')
     .eq('mode', targetMode)
     .order('score', {ascending:false})
     .limit(300);
 
-  // Date range filter
+  // Date range filter (양쪽 모드 모두 daily_date로 통일)
   if(lbRange === 'daily'){
-    if(targetMode === 'daily'){
-      query = query.eq('daily_date', today);
-    } else {
-      query = query.gte('created_at', etDateStartUTC(today));
-    }
+    query = query.eq('daily_date', today);
   } else if(lbRange === 'weekly'){
     const fromDate = weekStartDateStr();
-    if(targetMode === 'daily'){
-      query = query.gte('daily_date', fromDate).lte('daily_date', today);
-    } else {
-      query = query.gte('created_at', etDateStartUTC(fromDate));
-    }
+    query = query.gte('daily_date', fromDate).lte('daily_date', today);
   }
   // 'alltime' → no date filter
 
@@ -1714,7 +1700,36 @@ async function cascade(){
 
     const toClear = new Set(m.set);
     const promotions = [];
+    const usedLines = new Set();
+
+    // L자/T자/십자 감지: 같은 petId의 H와 V 라인이 교차하면
+    //   - 교차 총 셀 6+ → rainbow (예: 3+4, 4+4 — 살짝 더 자주 나옴)
+    //   - 교차 총 셀 5    → bomb   (예: 3+3 L자/T자)
+    const hLines = m.lines.filter(l => l.type === 'h');
+    const vLines = m.lines.filter(l => l.type === 'v');
+    for(const h of hLines){
+      for(const v of vLines){
+        if(h.petId !== v.petId) continue;
+        if(usedLines.has(h) || usedLines.has(v)) continue;
+        // 교차 셀 찾기
+        let ir = -1, ic = -1;
+        for(const [hr, hc] of h.cells){
+          for(const [vr, vc] of v.cells){
+            if(hr === vr && hc === vc){ ir = hr; ic = hc; break; }
+          }
+          if(ir >= 0) break;
+        }
+        if(ir < 0) continue;
+        const uniqueCells = h.len + v.len - 1;
+        const type = uniqueCells >= 6 ? 'rainbow' : 'bomb';
+        promotions.push({r:ir, c:ic, petId:h.petId, type});
+        usedLines.add(h); usedLines.add(v);
+      }
+    }
+
+    // 일반 직선 매치 처리
     for(const line of m.lines){
+      if(usedLines.has(line)) continue;
       if(line.len >= 5){
         const [r,c] = line.cells[Math.floor(line.cells.length/2)];
         promotions.push({r, c, petId:line.petId, type:'rainbow'});
@@ -2284,7 +2299,7 @@ async function endGame(){
     last_pop_bonus: G.lastPop,
     duration_sec: 60,
     mode: G.mode,
-    daily_date: G.mode === 'daily' ? today : null,
+    daily_date: today, // 양쪽 모드 모두 ET 오늘 날짜 저장 → 리더보드 today/weekly 필터링용
   };
   const newBest = G.score > player.best_score;
 
