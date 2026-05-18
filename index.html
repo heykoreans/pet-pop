@@ -986,8 +986,61 @@ async function patchPlayer(id, patch){
   if(error) console.error('patchPlayer',error);
 }
 async function insertSession(payload){
-  const {error} = await db.from('petpop_sessions').insert(payload);
-  if(error) console.error('insertSession',error);
+  // Use fetch with keepalive — survives page unload (KakaoTalk in-app browser,
+  // mobile backgrounding, tab close). Browser guarantees the request completes
+  // even after the page is destroyed.
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/petpop_sessions', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_ANON,
+        'Authorization': 'Bearer ' + SUPABASE_ANON,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify(payload),
+      keepalive: true,
+    });
+    if(res.ok) return true;
+    console.error('insertSession status', res.status);
+  } catch(e){
+    console.error('insertSession', e);
+  }
+  // Fallback: queue locally (cap 20, drop oldest), flush on next app start
+  try {
+    let q = JSON.parse(localStorage.getItem('petpop_pending_sessions') || '[]');
+    q.push(payload);
+    if(q.length > 20) q = q.slice(-20);
+    localStorage.setItem('petpop_pending_sessions', JSON.stringify(q));
+  } catch(e){}
+  return false;
+}
+
+async function flushPendingSessions(){
+  let queue = [];
+  try {
+    queue = JSON.parse(localStorage.getItem('petpop_pending_sessions') || '[]');
+  } catch { return; }
+  if(!queue.length) return;
+  const remaining = [];
+  for(const payload of queue){
+    try {
+      const res = await fetch(SUPABASE_URL + '/rest/v1/petpop_sessions', {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON,
+          'Authorization': 'Bearer ' + SUPABASE_ANON,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal',
+        },
+        body: JSON.stringify(payload),
+      });
+      if(!res.ok) remaining.push(payload);
+    } catch {
+      remaining.push(payload);
+    }
+  }
+  try { localStorage.setItem('petpop_pending_sessions', JSON.stringify(remaining)); } catch {}
 }
 
 let soundOn = localStorage.getItem('petpop_sound') !== 'off';
@@ -2550,6 +2603,7 @@ const cycle = setInterval(() => { loadEmoji.textContent = LOAD_PETS[li++ % LOAD_
   await preload();
   clearInterval(cycle);
   loadLabel.textContent = 'Ready!';
+  flushPendingSessions().catch(()=>{});  // fire-and-forget: retry any queued sessions
   await sleep(400);
 
   const cached = load();
