@@ -2316,7 +2316,7 @@ async function reshuffleBoard(){
   releaseBusy();
 }
 
-async function startGame(mode='free'){
+async function startGame(mode='free', skipCountdown=false){
   G.active = false; G.busy = true;
   G.mode = mode;
   G.board = []; G.cells = [];
@@ -2342,7 +2342,7 @@ async function startGame(mode='free'){
   G.board = genBoard();
   if(!findHint()) G.board = genBoard();
   renderInitial();
-  await runCountdown();
+  if(!skipCountdown) await runCountdown();
   startBGM();
   G.active = true; G.busy = false;
   startTimer();
@@ -2574,7 +2574,7 @@ function renderDex(){
 document.getElementById('replay-btn').addEventListener('click', async () => {
   document.getElementById('result-modal').classList.add('hidden');
   show('game-screen');
-  await startGame('free');
+  await startGame('free', true);  // skip countdown on replay — instant restart
 });
 document.getElementById('home-from-result-btn').addEventListener('click', () => {
   document.getElementById('result-modal').classList.add('hidden');
